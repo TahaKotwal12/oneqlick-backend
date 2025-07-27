@@ -1,0 +1,15 @@
+from sqlalchemy import Column, String, Boolean, Integer, TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+from ..base import Base
+
+class Category(Base):
+    __tablename__ = 'core_mstr_one_qlick_categories_tbl'
+
+    category_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    description = Column(String)
+    image = Column(String(500))
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(TIMESTAMP, nullable=False) 

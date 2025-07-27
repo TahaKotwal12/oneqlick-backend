@@ -1,0 +1,53 @@
+2025-07-27 17:17:58,737 - app.infra.db.postgres.postgres_config - INFO - Database engine created successfully
+2025-07-27 17:18:48,573 - app.infra.db.postgres.postgres_config - INFO - Database engine created successfully
+2025-07-27 17:18:54,842 - app.infra.db.postgres.postgres_config - INFO - Database engine created successfully
+2025-07-27 17:20:37,630 - app.infra.db.postgres.postgres_config - ERROR - Failed to create database engine: No module named 'psycopg2'
+2025-07-27 17:21:05,727 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:21:17,450 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:21:46,219 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:25:07,739 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:25:24,505 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:25:26,711 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:26:16,086 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:26:27,602 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:26:30,641 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:26:43,653 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:27:32,490 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:28:19,355 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:28:59,644 - app.main - ERROR - Request validation error: header.X-Org-Id: Field required
+2025-07-27 17:30:33,550 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:32:00,495 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:33:02,903 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:33:19,481 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:33:26,498 - app.api.routes.user_controller - INFO - Processing POST /users request for email: test.user@oneqlick.com
+2025-07-27 17:33:26,844 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: 401fee20-b126-49e2-bd18-7dc36bfa7e36
+2025-07-27 17:33:26,845 - app.domain.services.user_service - INFO - User created successfully: 401fee20-b126-49e2-bd18-7dc36bfa7e36
+2025-07-27 17:33:26,845 - app.api.routes.user_controller - INFO - Successfully created user with ID: 401fee20-b126-49e2-bd18-7dc36bfa7e36
+2025-07-27 17:36:27,860 - app.api.routes.user_controller - INFO - Processing GET /users request with skip=0, limit=5, role=None, status=None
+2025-07-27 17:36:27,888 - app.infra.db.postgres.repositories.user_repository - INFO - Retrieved 1 users
+2025-07-27 17:36:27,888 - app.domain.services.user_service - INFO - Retrieved 1 users
+2025-07-27 17:36:27,889 - app.api.routes.user_controller - INFO - Successfully retrieved 1 users
+2025-07-27 17:36:27,890 - app.api.routes.user_controller - ERROR - Error in get_all_users: 'NoneType' object has no attribute 'HTTP_200_OK'
+Traceback (most recent call last):
+  File "/home/taha/personal/oneqlick/backend/app/api/routes/user_controller.py", line 130, in get_all_users
+    code=status.HTTP_200_OK,
+         ^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'HTTP_200_OK'
+
+2025-07-27 17:36:27,898 - app.main - ERROR - Unexpected error: 'NoneType' object has no attribute 'HTTP_500_INTERNAL_SERVER_ERROR'
+2025-07-27 17:40:34,831 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:41:19,776 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:43:18,495 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:43:26,425 - app.api.routes.user_controller - INFO - Processing POST /users request for email: bcrypt.test@oneqlick.com
+2025-07-27 17:43:27,476 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
+2025-07-27 17:43:27,476 - app.domain.services.user_service - INFO - User created successfully with bcrypt password: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
+2025-07-27 17:43:27,476 - app.api.routes.user_controller - INFO - Successfully created user with ID: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
+2025-07-27 17:49:32,774 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:53:45,761 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 17:54:10,844 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@example.com
+2025-07-27 17:54:11,709 - app.domain.services.user_service - WARNING - User creation validation error: User with this phone number already exists
+2025-07-27 17:54:11,710 - app.api.routes.user_controller - WARNING - Validation error in create_user: User with this phone number already exists
+2025-07-27 17:54:28,429 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@example.com
+2025-07-27 17:54:29,213 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: a738c2c9-06cc-405c-89bf-ed338e3e2477
+2025-07-27 17:54:29,213 - app.domain.services.user_service - INFO - User created successfully with bcrypt password: a738c2c9-06cc-405c-89bf-ed338e3e2477
+2025-07-27 17:54:29,213 - app.api.routes.user_controller - INFO - Successfully created user with ID: a738c2c9-06cc-405c-89bf-ed338e3e2477
