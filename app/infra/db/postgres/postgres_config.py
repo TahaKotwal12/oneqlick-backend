@@ -14,6 +14,14 @@ from app.config.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Validate DATABASE_URL before attempting to create engine
+if not DATABASE_URL or DATABASE_URL.strip() == "":
+    error_msg = "DATABASE_URL environment variable is not set or is empty. Please configure it in your Vercel environment variables."
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
+logger.info(f"Attempting to connect to database with URL: {DATABASE_URL[:20]}...") # Log first 20 chars for debugging
+
 try:
     engine = create_engine(
         DATABASE_URL,
@@ -28,11 +36,12 @@ try:
     
     SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
     
-    logger.info("Supabase PostgreSQL database engine created successfully")
+    logger.info("PostgreSQL database engine created successfully")
     
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")
-    raise e  # Re-raise the exception instead of falling back to SQLite
+    logger.error(f"DATABASE_URL format: {DATABASE_URL[:50] if DATABASE_URL else 'None'}...")
+    raise e
 
 def get_db():
     db = SessionLocal()

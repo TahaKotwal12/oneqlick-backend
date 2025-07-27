@@ -5,6 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.main import app
+from mangum import Adapter
 
-# This is the entry point for Vercel
-handler = app 
+# Create a handler for Vercel using Mangum
+handler = Adapter(app) 
