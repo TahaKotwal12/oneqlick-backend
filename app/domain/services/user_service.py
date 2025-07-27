@@ -82,6 +82,18 @@ class UserService:
         """Get user by email."""
         return self.user_repository.get_user_by_email(email)
 
+    def get_user_by_phone(self, phone: str) -> Optional[User]:
+        """Get user by phone number."""
+        logger = get_logger(__name__)
+        try:
+            user = self.user_repository.get_user_by_phone(phone)
+            if not user:
+                logger.warning(f"User not found with phone: {phone}")
+            return user
+        except Exception as e:
+            logger.error(f"Error retrieving user by phone: {str(e)}")
+            raise
+
     def update_user(self, user_id: UUID, update_data: UserUpdateRequest) -> Optional[User]:
         """Update user information."""
         logger = get_logger(__name__)

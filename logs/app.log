@@ -147,3 +147,165 @@ created_at
 2025-07-27 22:24:32,606 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Found 0 restaurants within 5.0km
 2025-07-27 22:24:32,607 - app.domain.services.restaurant_service - INFO - Found 0 restaurants within 5.0km
 2025-07-27 22:24:32,607 - app.api.routes.restaurant_controller - INFO - Successfully found 0 restaurants within 5.0km
+2025-07-27 23:18:50,600 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:18:54,854 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:16,932 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:20,430 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:30,433 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:34,674 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:43,922 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:19:47,648 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:20:29,998 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:20:34,485 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:20:42,663 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:20:48,509 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:20:50,784 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:21:11,241 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:25:47,209 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:26:38,273 - app.infra.redis.redis_config - ERROR - Redis connection error: Error 111 connecting to localhost:6379. Connection refused.
+2025-07-27 23:26:38,274 - app.main - ERROR - Unexpected error: Error 111 connecting to localhost:6379. Connection refused.
+2025-07-27 23:30:25,573 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:30:25,577 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:30:25,578 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:30:25,579 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 959274
+2025-07-27 23:30:25,579 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:31:46,575 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:31:51,903 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:31:51,905 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:31:51,905 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:31:51,906 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 422870
+2025-07-27 23:31:51,906 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:32:02,028 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:32:02,029 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:32:27,535 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:32:27,535 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:32:27,536 - app.domain.services.otp_service - ERROR - Error checking OTP request allowance for +917219342962: 'str' object has no attribute 'decode'
+2025-07-27 23:32:27,536 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:32:27,537 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 826081
+2025-07-27 23:32:27,537 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:33:13,594 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:33:13,595 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:33:13,596 - app.domain.services.otp_service - ERROR - Error checking OTP request allowance for +917219342962: 'str' object has no attribute 'decode'
+2025-07-27 23:33:13,596 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:33:13,597 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 706393
+2025-07-27 23:33:13,597 - app.domain.services.sms_service - ERROR - Mock SMS error for +917219342962: [Errno 5] Input/output error
+2025-07-27 23:33:13,597 - app.domain.services.otp_service - INFO - OTP deleted for phone: +917219342962
+2025-07-27 23:33:31,507 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:33:35,201 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:33:35,203 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:33:35,204 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:33:35,204 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 430941
+2025-07-27 23:33:35,204 - app.domain.services.sms_service - ERROR - Mock SMS error for +917219342962: [Errno 5] Input/output error
+2025-07-27 23:33:35,205 - app.domain.services.otp_service - INFO - OTP deleted for phone: +917219342962
+2025-07-27 23:33:38,842 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:33:38,843 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:33:38,844 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:33:38,844 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 819874
+2025-07-27 23:33:38,844 - app.domain.services.sms_service - ERROR - Mock SMS error for +917219342962: [Errno 5] Input/output error
+2025-07-27 23:33:38,845 - app.domain.services.otp_service - INFO - OTP deleted for phone: +917219342962
+2025-07-27 23:33:51,109 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:33:51,110 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +919356864166
+2025-07-27 23:33:51,111 - app.domain.services.otp_service - INFO - OTP stored for phone: +919356864166
+2025-07-27 23:33:51,111 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +919356864166: Your OneQlick verification code is: 410825
+2025-07-27 23:33:51,112 - app.domain.services.sms_service - ERROR - Mock SMS error for +919356864166: [Errno 5] Input/output error
+2025-07-27 23:33:51,112 - app.domain.services.otp_service - INFO - OTP deleted for phone: +919356864166
+2025-07-27 23:34:17,718 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:34:17,719 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +919356864166
+2025-07-27 23:34:17,720 - app.domain.services.otp_service - INFO - OTP stored for phone: +919356864166
+2025-07-27 23:34:17,720 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +919356864166: Your OneQlick verification code is: 932526
+2025-07-27 23:34:17,721 - app.domain.services.sms_service - ERROR - Mock SMS error for +919356864166: [Errno 5] Input/output error
+2025-07-27 23:34:17,721 - app.domain.services.otp_service - INFO - OTP deleted for phone: +919356864166
+2025-07-27 23:34:19,571 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:34:19,572 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +919356864166
+2025-07-27 23:34:19,573 - app.domain.services.otp_service - INFO - OTP stored for phone: +919356864166
+2025-07-27 23:34:19,573 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +919356864166: Your OneQlick verification code is: 475945
+2025-07-27 23:34:19,574 - app.domain.services.sms_service - ERROR - Mock SMS error for +919356864166: [Errno 5] Input/output error
+2025-07-27 23:34:19,575 - app.domain.services.otp_service - INFO - OTP deleted for phone: +919356864166
+2025-07-27 23:34:21,063 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:34:21,064 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +919356864166
+2025-07-27 23:34:21,065 - app.domain.services.otp_service - INFO - OTP stored for phone: +919356864166
+2025-07-27 23:34:21,066 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +919356864166: Your OneQlick verification code is: 398663
+2025-07-27 23:34:21,066 - app.domain.services.sms_service - ERROR - Mock SMS error for +919356864166: [Errno 5] Input/output error
+2025-07-27 23:34:21,066 - app.domain.services.otp_service - INFO - OTP deleted for phone: +919356864166
+2025-07-27 23:34:52,332 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:34:52,333 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +919356864166
+2025-07-27 23:34:52,335 - app.domain.services.otp_service - INFO - OTP stored for phone: +919356864166
+2025-07-27 23:34:52,335 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +919356864166: Your OneQlick verification code is: 129173
+2025-07-27 23:34:52,335 - app.domain.services.sms_service - ERROR - Mock SMS error for +919356864166: [Errno 5] Input/output error
+2025-07-27 23:34:52,335 - app.domain.services.otp_service - INFO - OTP deleted for phone: +919356864166
+2025-07-27 23:35:37,381 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:35:39,238 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:35:43,736 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:35:43,737 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:35:57,946 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:35:57,947 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:23,591 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:49:29,081 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:29,082 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:43,181 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:43,182 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:56,735 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:49:56,735 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:50:22,115 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:50:28,083 - app.infra.redis.redis_config - ERROR - Redis connection error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:50:28,083 - app.main - ERROR - Unexpected error: AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?
+2025-07-27 23:51:45,814 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:45,838 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:46,489 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:46,504 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:56,767 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:56,768 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:57,414 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:51:57,427 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:52:28,403 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:52:28,476 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:52:29,899 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:52:29,901 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:52:29,901 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:52:29,901 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 614255
+2025-07-27 23:52:29,902 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:52:31,741 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:52:31,766 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:53:11,655 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:53:11,656 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:53:11,656 - app.domain.services.otp_service - ERROR - Error checking OTP request allowance for +917219342962: 'str' object has no attribute 'decode'
+2025-07-27 23:53:11,657 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:53:11,657 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 342237
+2025-07-27 23:53:11,657 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:55:04,256 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:55:04,257 - app.api.routes.otp_controller - INFO - Processing OTP verification for phone: +917219342962
+2025-07-27 23:55:04,258 - app.api.routes.otp_controller - INFO - OTP verification result for +917219342962: False
+2025-07-27 23:55:23,834 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:55:23,836 - app.api.routes.otp_controller - INFO - Processing OTP verification for phone: +917219342962
+2025-07-27 23:55:23,836 - app.domain.services.otp_service - INFO - OTP deleted for phone: +917219342962
+2025-07-27 23:55:23,836 - app.domain.services.otp_service - INFO - OTP verified successfully for phone: +917219342962
+2025-07-27 23:55:23,837 - app.api.routes.otp_controller - ERROR - Error in verify_otp: 'UserService' object has no attribute 'get_user_by_phone'
+Traceback (most recent call last):
+  File "/home/taha/oneqlick-backend/app/api/routes/otp_controller.py", line 132, in verify_otp
+    user = user_service.get_user_by_phone(otp_verify.phone)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'UserService' object has no attribute 'get_user_by_phone'. Did you mean: 'get_user_by_email'?
+
+2025-07-27 23:55:56,999 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:55:57,045 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:55:57,696 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:55:57,735 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:56:19,082 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:56:19,082 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:56:30,331 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:56:30,333 - app.api.routes.otp_controller - INFO - Processing OTP verification for phone: +917219342962
+2025-07-27 23:56:30,333 - app.api.routes.otp_controller - INFO - OTP verification result for +917219342962: False
+2025-07-27 23:56:45,501 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:56:45,502 - app.api.routes.otp_controller - INFO - Processing OTP request for phone: +917219342962
+2025-07-27 23:56:45,502 - app.domain.services.otp_service - INFO - OTP stored for phone: +917219342962
+2025-07-27 23:56:45,502 - app.domain.services.sms_service - INFO - 📱 MOCK SMS to +917219342962: Your OneQlick verification code is: 460462
+2025-07-27 23:56:45,502 - app.api.routes.otp_controller - INFO - OTP sent successfully to +917219342962
+2025-07-27 23:57:02,520 - app.infra.redis.redis_config - INFO - Redis connected successfully to localhost:6379
+2025-07-27 23:57:02,520 - app.api.routes.otp_controller - INFO - Processing OTP verification for phone: +917219342962
+2025-07-27 23:57:02,521 - app.domain.services.otp_service - INFO - OTP deleted for phone: +917219342962
+2025-07-27 23:57:02,521 - app.domain.services.otp_service - INFO - OTP verified successfully for phone: +917219342962
+2025-07-27 23:57:02,872 - app.infra.db.postgres.repositories.user_repository - INFO - Phone verified for user: 12c82882-26ef-4dd0-8776-8a534acec03b
+2025-07-27 23:57:02,898 - app.api.routes.otp_controller - INFO - Phone verified for user: 12c82882-26ef-4dd0-8776-8a534acec03b
+2025-07-27 23:57:02,898 - app.api.routes.otp_controller - INFO - OTP verification result for +917219342962: True
+2025-07-27 23:57:43,629 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 23:57:43,637 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
