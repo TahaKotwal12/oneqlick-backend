@@ -53,3 +53,5 @@ AttributeError: 'NoneType' object has no attribute 'HTTP_200_OK'
 2025-07-27 17:54:29,213 - app.api.routes.user_controller - INFO - Successfully created user with ID: a738c2c9-06cc-405c-89bf-ed338e3e2477
 2025-07-27 17:58:06,554 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
 2025-07-27 17:58:10,187 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 18:14:00,478 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 18:14:02,036 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
