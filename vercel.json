@@ -1,17 +1,23 @@
 {
-  "version": 2,
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "api/index.py"
+    "version": 2,
+    "builds": [
+        {
+            "src": "./app/main.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/app/main.py"
+        }
+    ],
+    "functions": {
+        "./app/main.py": {
+            "runtime": "python3.11"
+        }
+    },
+    "env": {
+        "PYTHONPATH": "."
     }
-  ],
-  "env": {
-    "PYTHON_PATH": "."
-  },
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "app/**"
-    }
-  }
-} 
+}

@@ -42,27 +42,4 @@ AttributeError: 'NoneType' object has no attribute 'HTTP_200_OK'
 2025-07-27 17:43:27,476 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
 2025-07-27 17:43:27,476 - app.domain.services.user_service - INFO - User created successfully with bcrypt password: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
 2025-07-27 17:43:27,476 - app.api.routes.user_controller - INFO - Successfully created user with ID: 3448a6b6-05e1-4bc4-a7c2-5e3ccded0c11
-2025-07-27 17:49:32,774 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 17:53:45,761 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 17:54:10,844 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@example.com
-2025-07-27 17:54:11,709 - app.domain.services.user_service - WARNING - User creation validation error: User with this phone number already exists
-2025-07-27 17:54:11,710 - app.api.routes.user_controller - WARNING - Validation error in create_user: User with this phone number already exists
-2025-07-27 17:54:28,429 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@example.com
-2025-07-27 17:54:29,213 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: a738c2c9-06cc-405c-89bf-ed338e3e2477
-2025-07-27 17:54:29,213 - app.domain.services.user_service - INFO - User created successfully with bcrypt password: a738c2c9-06cc-405c-89bf-ed338e3e2477
-2025-07-27 17:54:29,213 - app.api.routes.user_controller - INFO - Successfully created user with ID: a738c2c9-06cc-405c-89bf-ed338e3e2477
-2025-07-27 17:58:06,554 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 17:58:10,187 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 18:14:00,478 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 18:14:02,036 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
-2025-07-27 18:19:14,110 - app.infra.db.postgres.postgres_config - INFO - Attempting to connect to database with URL: postgresql+psycopg:/...
-2025-07-27 18:19:14,291 - app.infra.db.postgres.postgres_config - INFO - PostgreSQL database engine created successfully
-2025-07-27 18:40:13,340 - app.infra.db.postgres.postgres_config - INFO - Attempting to connect to database with URL: postgresql+psycopg:/...
-2025-07-27 18:40:13,550 - app.infra.db.postgres.postgres_config - INFO - PostgreSQL database engine created successfully
-2025-07-27 18:40:51,610 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@example.com
-2025-07-27 18:40:51,969 - app.domain.services.user_service - WARNING - User creation validation error: User with this email already exists
-2025-07-27 18:40:51,969 - app.api.routes.user_controller - WARNING - Validation error in create_user: User with this email already exists
-2025-07-27 18:40:58,405 - app.api.routes.user_controller - INFO - Processing POST /users request for email: john.doe@exaple.com
-2025-07-27 18:40:59,219 - app.infra.db.postgres.repositories.user_repository - INFO - User created successfully with ID: 41484f1b-6878-4405-9b73-5fba2ee81f07
-2025-07-27 18:40:59,219 - app.domain.services.user_service - INFO - User created successfully with bcrypt password: 41484f1b-6878-4405-9b73-5fba2ee81f07
-2025-07-27 18:40:59,219 - app.api.routes.user_controller - INFO - Successfully created user with ID: 41484f1b-6878-4405-9b73-5fba2ee81f07
+2025-07-27 18:48:07,563 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
