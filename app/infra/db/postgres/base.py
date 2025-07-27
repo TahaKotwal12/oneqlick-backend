@@ -5,8 +5,6 @@ from app.config.config import DATABASE_URL  # Import from your config module
 from app.config.logger import get_logger
 import traceback
 
-logger = get_logger(__name__)
-
 try:
     # Create the SQLAlchemy engine using the database URL from the config
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
@@ -14,6 +12,7 @@ try:
     # Create a scoped session for thread-safety
     SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 except Exception as e:
+    logger = get_logger(__name__)
     logger.error(f"Error connecting to database: {str(e)}")
     logger.error(traceback.format_exc())
     

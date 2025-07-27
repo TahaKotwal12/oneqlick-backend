@@ -7,8 +7,6 @@ from app.infra.db.postgres.models.user import User, UserRole, UserStatus
 from app.api.schemas.user_schema import UserCreateRequest, UserUpdateRequest
 from app.config.logger import get_logger
 
-logger = get_logger(__name__)
-
 class UserService:
     def __init__(self, db: Session):
         self.db = db
@@ -23,6 +21,7 @@ class UserService:
 
     def _verify_password(self, password: str, password_hash: str) -> bool:
         """Verify password against bcrypt hash."""
+        logger = get_logger(__name__)
         try:
             return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
         except Exception as e:
@@ -31,6 +30,7 @@ class UserService:
 
     def create_user(self, user_data: UserCreateRequest) -> User:
         """Create a new user with bcrypt hashed password."""
+        logger = get_logger(__name__)
         try:
             # Check if user already exists
             existing_user = self.user_repository.get_user_by_email(user_data.email)
@@ -68,6 +68,7 @@ class UserService:
 
     def get_user_by_id(self, user_id: UUID) -> Optional[User]:
         """Get user by ID."""
+        logger = get_logger(__name__)
         try:
             user = self.user_repository.get_user_by_id(user_id)
             if not user:
@@ -83,6 +84,7 @@ class UserService:
 
     def update_user(self, user_id: UUID, update_data: UserUpdateRequest) -> Optional[User]:
         """Update user information."""
+        logger = get_logger(__name__)
         try:
             # Convert Pydantic model to dict, excluding None values
             update_dict = update_data.model_dump(exclude_unset=True, exclude_none=True)

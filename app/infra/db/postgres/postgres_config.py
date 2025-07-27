@@ -12,8 +12,6 @@ from app.config.config import (
 )
 from app.config.logger import get_logger
 
-logger = get_logger(__name__)
-
 try:
     engine = create_engine(
         DATABASE_URL,
@@ -28,9 +26,11 @@ try:
     
     SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
     
+    logger = get_logger(__name__)
     logger.info("Supabase PostgreSQL database engine created successfully")
     
 except Exception as e:
+    logger = get_logger(__name__)
     logger.error(f"Failed to create database engine: {e}")
     raise e  # Re-raise the exception instead of falling back to SQLite
 

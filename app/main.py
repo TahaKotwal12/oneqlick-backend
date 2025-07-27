@@ -15,9 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import logging
 
-logger = logging.getLogger(__name__)
 app = FastAPI(title="OneQlick Food Delivery API")
-logger = get_logger(__name__)
 
 # Include API routes
 app.include_router(user_router, prefix="/api/v1")
@@ -59,6 +57,7 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
     """
     Handle FastAPI request validation errors by converting them to our custom format.
     """
+    logger = get_logger(__name__)
     first_error = exc.errors()[0]  
     location_parts = [str(loc) for loc in first_error["loc"]]
 
@@ -85,6 +84,7 @@ async def general_exception_handler(request, exc: Exception):
     """
     Handle all other exceptions.
     """
+    logger = get_logger(__name__)
     error_message = str(exc)
     logger.error(f"Unexpected error: {error_message}")
     

@@ -11,8 +11,6 @@ from app.api.schemas.user_schema import (
 from app.domain.services.user_service import UserService
 from app.config.logger import get_logger
 
-logger = get_logger(__name__)
-
 router = APIRouter()
 
 @router.post("/users", 
@@ -30,6 +28,7 @@ async def create_user(
     Email and phone must be unique across the system.
     Password is securely hashed using bcrypt.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing POST /users request for email: {user_data.email}")
         
@@ -70,6 +69,7 @@ async def get_user_by_id(
     
     This endpoint retrieves a user's complete information from the OneQlick food delivery system.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing GET /users/{user_id} request")
         
@@ -115,6 +115,7 @@ async def get_all_users(
     
     This endpoint retrieves a list of users with pagination and optional filtering by role and status.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing GET /users request with skip={skip}, limit={limit}, role={role}, status={status_filter}")
         
@@ -161,6 +162,7 @@ async def update_user(
     
     This endpoint updates an existing user's information. Only provided fields will be updated.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing PUT /users/{user_id} request")
         
@@ -209,6 +211,7 @@ async def delete_user(
     
     This endpoint performs a soft delete by setting the user status to inactive.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing DELETE /users/{user_id} request")
         
@@ -251,6 +254,7 @@ async def verify_user_email(
     
     This endpoint marks the user's email as verified in the system.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing POST /users/{user_id}/verify-email request")
         
@@ -293,6 +297,7 @@ async def verify_user_phone(
     
     This endpoint marks the user's phone as verified in the system.
     """
+    logger = get_logger(__name__)
     try:
         logger.info(f"Processing POST /users/{user_id}/verify-phone request")
         

@@ -2,10 +2,6 @@ from fastapi import HTTPException, status
 from typing import List, Dict, Any, Optional
 from pydantic import ValidationError
 
-from app.config.logger import get_logger
-
-logger = get_logger(__name__)
-
 class EngageFatalException(HTTPException):
     def __init__(self, message: str):
         super().__init__(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
