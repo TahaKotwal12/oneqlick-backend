@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DECIMAL, Integer, TIMESTAMP, ForeignKey, Enum, Time
+from sqlalchemy import Column, String, Boolean, DECIMAL, Integer, TIMESTAMP, ForeignKey, Enum, Time, func
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from ..base import Base
@@ -37,5 +37,5 @@ class Restaurant(Base):
     is_open = Column(Boolean, default=True)
     opening_time = Column(Time)
     closing_time = Column(Time)
-    created_at = Column(TIMESTAMP, nullable=False)
-    updated_at = Column(TIMESTAMP, nullable=False) 
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False) 

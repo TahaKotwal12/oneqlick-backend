@@ -7,6 +7,7 @@ import threading
 import os
 
 from app.api.routes.user_controller import router as user_router
+from app.api.routes.restaurant_controller import router as restaurant_router
 
 from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
@@ -19,6 +20,7 @@ app = FastAPI(title="OneQlick Food Delivery API")
 
 # Include API routes
 app.include_router(user_router, prefix="/api/v1")
+app.include_router(restaurant_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

@@ -54,3 +54,96 @@ AttributeError: 'NoneType' object has no attribute 'HTTP_200_OK'
 2025-07-27 19:12:04,013 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
 2025-07-27 19:12:18,228 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
 2025-07-27 19:12:41,798 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:53:49,991 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:53:53,052 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:54:34,267 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:54:38,362 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:55:16,615 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:55:22,406 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:07,219 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:11,690 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:19,980 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:21,521 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:24,415 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 21:58:25,844 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:10:54,294 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:10:59,007 - app.api.routes.restaurant_controller - INFO - Processing POST /restaurants request for restaurant: Kaynat
+2025-07-27 22:10:59,325 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Restaurant created successfully with ID: 4a23bed7-403e-4aec-940a-a5b0321232e8
+2025-07-27 22:10:59,326 - app.domain.services.restaurant_service - INFO - Restaurant created successfully: 4a23bed7-403e-4aec-940a-a5b0321232e8
+2025-07-27 22:10:59,326 - app.api.routes.restaurant_controller - INFO - Successfully created restaurant with ID: 4a23bed7-403e-4aec-940a-a5b0321232e8
+2025-07-27 22:10:59,326 - app.api.routes.restaurant_controller - WARNING - Validation error in create_restaurant: 2 validation errors for RestaurantResponse
+created_at
+  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+2025-07-27 22:11:40,093 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:11:41,700 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:11:44,992 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:11:46,504 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:20,979 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:22,511 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:30,402 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:31,989 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:32,190 - app.api.routes.restaurant_controller - INFO - Processing POST /restaurants request for restaurant: Kaynat
+2025-07-27 22:12:32,407 - app.domain.services.restaurant_service - WARNING - Restaurant creation validation error: Restaurant with this phone number already exists
+2025-07-27 22:12:32,407 - app.api.routes.restaurant_controller - WARNING - Validation error in create_restaurant: Restaurant with this phone number already exists
+2025-07-27 22:12:41,315 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:12:42,816 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:13:28,758 - app.main - ERROR - Request validation error: owner_id: Input should be a valid UUID, invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `o` at 36
+2025-07-27 22:13:39,909 - app.main - ERROR - Request validation error: owner_id: Input should be a valid UUID, invalid group length in group 4: expected 12, found 11
+2025-07-27 22:14:59,084 - app.api.routes.restaurant_controller - INFO - Processing GET /restaurants/search/location request with lat=40.7128, lon=-74.006, radius=5.0km
+2025-07-27 22:14:59,345 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Found 1 restaurants within 5.0km
+2025-07-27 22:14:59,346 - app.domain.services.restaurant_service - INFO - Found 1 restaurants within 5.0km
+2025-07-27 22:14:59,346 - app.api.routes.restaurant_controller - INFO - Successfully found 1 restaurants within 5.0km
+2025-07-27 22:14:59,348 - app.api.routes.restaurant_controller - ERROR - Error in search_restaurants_by_location: 1 validation error for RestaurantListResponse
+created_at
+  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/home/taha/oneqlick-backend/app/api/routes/restaurant_controller.py", line 217, in search_restaurants_by_location
+    data=[RestaurantListResponse.model_validate(restaurant) for restaurant in restaurants]
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/taha/oneqlick-backend/.venv/lib/python3.13/site-packages/pydantic/main.py", line 705, in model_validate
+    return cls.__pydantic_validator__.validate_python(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        obj, strict=strict, from_attributes=from_attributes, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for RestaurantListResponse
+created_at
+  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+
+2025-07-27 22:15:20,800 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:15:22,383 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:15:49,282 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:15:50,776 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:15:58,615 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:16:00,158 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:16:01,077 - app.api.routes.restaurant_controller - INFO - Processing GET /restaurants/search/location request with lat=40.7128, lon=-74.006, radius=5.0km
+2025-07-27 22:16:01,349 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Found 1 restaurants within 5.0km
+2025-07-27 22:16:01,349 - app.domain.services.restaurant_service - INFO - Found 1 restaurants within 5.0km
+2025-07-27 22:16:01,349 - app.api.routes.restaurant_controller - INFO - Successfully found 1 restaurants within 5.0km
+2025-07-27 22:16:08,235 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:16:41,495 - app.main - ERROR - Request validation error: query.latitude: Input should be less than or equal to 90
+2025-07-27 22:21:30,943 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:21:32,516 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:21:42,080 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:21:43,761 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:21:51,986 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:21:53,525 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:22:14,030 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:22:15,557 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:22:32,227 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:22:33,765 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:23:03,756 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:23:05,299 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-07-27 22:24:14,938 - app.main - ERROR - Request validation error: query.latitude: Input should be less than or equal to 90
+2025-07-27 22:24:17,480 - app.main - ERROR - Request validation error: query.latitude: Input should be less than or equal to 90
+2025-07-27 22:24:32,360 - app.api.routes.restaurant_controller - INFO - Processing GET /restaurants/search/location request with lat=89.7128, lon=-74.006, radius=5.0km
+2025-07-27 22:24:32,606 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Found 0 restaurants within 5.0km
+2025-07-27 22:24:32,607 - app.domain.services.restaurant_service - INFO - Found 0 restaurants within 5.0km
+2025-07-27 22:24:32,607 - app.api.routes.restaurant_controller - INFO - Successfully found 0 restaurants within 5.0km
