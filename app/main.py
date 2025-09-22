@@ -6,7 +6,13 @@ from app.api.exception import EngageFatalException, EngageNonFatalException
 from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
 
+# Import auth routes
+from app.api.routes.auth_controller import router as auth_router
+
 app = FastAPI(title="OneQlick Food Delivery API")
+
+# Include API routes
+app.include_router(auth_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
