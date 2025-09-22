@@ -377,8 +377,370 @@ INSERT INTO core_mstr_one_qlick_categories_tbl (name, description, is_active, so
 ('Fast Food', 'Quick and fast food items', TRUE, 5);
 
 -- ====================================================================
+-- ADDITIONAL TABLES FOR ENHANCED FUNCTIONALITY
+-- ====================================================================
+
+-- Food item add-ons table
+CREATE TABLE core_mstr_one_qlick_food_addons_tbl (
+    addon_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    food_item_id UUID REFERENCES core_mstr_one_qlick_food_items_tbl(food_item_id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Food item customization options table
+CREATE TABLE core_mstr_one_qlick_food_customizations_tbl (
+    customization_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    food_item_id UUID REFERENCES core_mstr_one_qlick_food_items_tbl(food_item_id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL, -- e.g., "Spice Level", "Size"
+    is_required BOOLEAN DEFAULT FALSE,
+    max_selections INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Customization options values
+CREATE TABLE core_mstr_one_qlick_customization_options_tbl (
+    option_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customization_id UUID REFERENCES core_mstr_one_qlick_food_customizations_tbl(customization_id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL, -- e.g., "Mild", "Medium", "Spicy"
+    price_adjustment DECIMAL(10, 2) DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Shopping cart table
+CREATE TABLE core_mstr_one_qlick_cart_tbl (
+    cart_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    restaurant_id UUID REFERENCES core_mstr_one_qlick_restaurants_tbl(restaurant_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cart items table
+CREATE TABLE core_mstr_one_qlick_cart_items_tbl (
+    cart_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cart_id UUID REFERENCES core_mstr_one_qlick_cart_tbl(cart_id) ON DELETE CASCADE,
+    food_item_id UUID REFERENCES core_mstr_one_qlick_food_items_tbl(food_item_id),
+    quantity INTEGER NOT NULL,
+    special_instructions TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cart item customizations
+CREATE TABLE core_mstr_one_qlick_cart_item_customizations_tbl (
+    cart_item_customization_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cart_item_id UUID REFERENCES core_mstr_one_qlick_cart_items_tbl(cart_item_id) ON DELETE CASCADE,
+    customization_id UUID REFERENCES core_mstr_one_qlick_food_customizations_tbl(customization_id),
+    option_id UUID REFERENCES core_mstr_one_qlick_customization_options_tbl(option_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cart item add-ons
+CREATE TABLE core_mstr_one_qlick_cart_item_addons_tbl (
+    cart_item_addon_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cart_item_id UUID REFERENCES core_mstr_one_qlick_cart_items_tbl(cart_item_id) ON DELETE CASCADE,
+    addon_id UUID REFERENCES core_mstr_one_qlick_food_addons_tbl(addon_id),
+    quantity INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Order item customizations (to store selected customizations)
+CREATE TABLE core_mstr_one_qlick_order_item_customizations_tbl (
+    order_item_customization_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_item_id UUID REFERENCES core_mstr_one_qlick_order_items_tbl(order_item_id) ON DELETE CASCADE,
+    customization_id UUID REFERENCES core_mstr_one_qlick_food_customizations_tbl(customization_id),
+    option_id UUID REFERENCES core_mstr_one_qlick_customization_options_tbl(option_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Order item add-ons
+CREATE TABLE core_mstr_one_qlick_order_item_addons_tbl (
+    order_item_addon_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_item_id UUID REFERENCES core_mstr_one_qlick_order_items_tbl(order_item_id) ON DELETE CASCADE,
+    addon_id UUID REFERENCES core_mstr_one_qlick_food_addons_tbl(addon_id),
+    quantity INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User preferences table
+CREATE TABLE core_mstr_one_qlick_user_preferences_tbl (
+    preference_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    notifications_enabled BOOLEAN DEFAULT TRUE,
+    location_services_enabled BOOLEAN DEFAULT TRUE,
+    language VARCHAR(10) DEFAULT 'en',
+    currency VARCHAR(3) DEFAULT 'INR',
+    dark_mode BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User favorite restaurants
+CREATE TABLE core_mstr_one_qlick_user_favorites_tbl (
+    favorite_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    restaurant_id UUID REFERENCES core_mstr_one_qlick_restaurants_tbl(restaurant_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, restaurant_id)
+);
+
+-- User payment methods table
+CREATE TABLE core_mstr_one_qlick_user_payment_methods_tbl (
+    payment_method_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    payment_type payment_method NOT NULL,
+    name VARCHAR(100) NOT NULL, -- e.g., "HDFC Credit Card", "Google Pay"
+    last_four_digits VARCHAR(4),
+    upi_id VARCHAR(100),
+    bank_name VARCHAR(100),
+    is_default BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User wallet table
+CREATE TABLE core_mstr_one_qlick_user_wallets_tbl (
+    wallet_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    balance DECIMAL(10, 2) DEFAULT 0,
+    currency VARCHAR(3) DEFAULT 'INR',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Wallet transactions
+CREATE TABLE core_mstr_one_qlick_wallet_transactions_tbl (
+    transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_id UUID REFERENCES core_mstr_one_qlick_user_wallets_tbl(wallet_id) ON DELETE CASCADE,
+    order_id UUID REFERENCES core_mstr_one_qlick_orders_tbl(order_id),
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type VARCHAR(20) NOT NULL, -- 'credit', 'debit', 'refund'
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Order status history table (more detailed than current tracking)
+CREATE TABLE core_mstr_one_qlick_order_status_history_tbl (
+    status_history_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES core_mstr_one_qlick_orders_tbl(order_id) ON DELETE CASCADE,
+    status order_status NOT NULL,
+    status_message TEXT,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    updated_by UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Driver location tracking
+CREATE TABLE core_mstr_one_qlick_driver_locations_tbl (
+    location_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    delivery_partner_id UUID REFERENCES core_mstr_one_qlick_delivery_partners_tbl(delivery_partner_id) ON DELETE CASCADE,
+    order_id UUID REFERENCES core_mstr_one_qlick_orders_tbl(order_id),
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Restaurant features table
+CREATE TABLE core_mstr_one_qlick_restaurant_features_tbl (
+    feature_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurant_id UUID REFERENCES core_mstr_one_qlick_restaurants_tbl(restaurant_id) ON DELETE CASCADE,
+    feature_name VARCHAR(100) NOT NULL, -- e.g., "Free Delivery", "Fast Delivery"
+    feature_value VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Restaurant offers table
+CREATE TABLE core_mstr_one_qlick_restaurant_offers_tbl (
+    offer_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurant_id UUID REFERENCES core_mstr_one_qlick_restaurants_tbl(restaurant_id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    discount_type VARCHAR(20) NOT NULL, -- 'percentage', 'fixed', 'free_delivery'
+    discount_value DECIMAL(10, 2) NOT NULL,
+    min_order_amount DECIMAL(10, 2) DEFAULT 0,
+    max_discount_amount DECIMAL(10, 2),
+    valid_from TIMESTAMP NOT NULL,
+    valid_until TIMESTAMP NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Search history table
+CREATE TABLE core_mstr_one_qlick_search_history_tbl (
+    search_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    search_query VARCHAR(255) NOT NULL,
+    search_type VARCHAR(20) NOT NULL, -- 'restaurant', 'food', 'general'
+    results_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User analytics table
+CREATE TABLE core_mstr_one_qlick_user_analytics_tbl (
+    analytics_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    total_orders INTEGER DEFAULT 0,
+    total_spent DECIMAL(10, 2) DEFAULT 0,
+    loyalty_points INTEGER DEFAULT 0,
+    favorite_cuisine VARCHAR(100),
+    last_order_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ====================================================================
+-- SCHEMA ENHANCEMENTS
+-- ====================================================================
+
+-- Add missing columns to users table
+ALTER TABLE core_mstr_one_qlick_users_tbl 
+ADD COLUMN date_of_birth DATE,
+ADD COLUMN gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
+ADD COLUMN loyalty_points INTEGER DEFAULT 0;
+
+-- Add missing columns to addresses table
+ALTER TABLE core_mstr_one_qlick_addresses_tbl 
+ADD COLUMN address_type VARCHAR(20) DEFAULT 'home' CHECK (address_type IN ('home', 'work', 'restaurant', 'other')),
+ADD COLUMN landmark VARCHAR(255);
+
+-- Add missing columns to food items table
+ALTER TABLE core_mstr_one_qlick_food_items_tbl 
+ADD COLUMN is_popular BOOLEAN DEFAULT FALSE,
+ADD COLUMN is_recommended BOOLEAN DEFAULT FALSE,
+ADD COLUMN nutrition_info JSONB,
+ADD COLUMN preparation_time VARCHAR(20);
+
+-- Add missing columns to restaurants table
+ALTER TABLE core_mstr_one_qlick_restaurants_tbl 
+ADD COLUMN is_veg BOOLEAN DEFAULT FALSE,
+ADD COLUMN is_pure_veg BOOLEAN DEFAULT FALSE,
+ADD COLUMN cost_for_two DECIMAL(10, 2),
+ADD COLUMN platform_fee DECIMAL(10, 2) DEFAULT 5;
+
+-- Add new order status to enum
+ALTER TYPE order_status ADD VALUE 'out_for_delivery';
+
+-- Add new payment methods to enum
+ALTER TYPE payment_method ADD VALUE 'netbanking';
+ALTER TYPE payment_method ADD VALUE 'cod';
+
+-- ====================================================================
+-- ADDITIONAL INDEXES FOR PERFORMANCE OPTIMIZATION
+-- ====================================================================
+
+-- Food add-ons and customizations indexes
+CREATE INDEX idx_one_qlick_food_addons_food_item ON core_mstr_one_qlick_food_addons_tbl(food_item_id);
+CREATE INDEX idx_one_qlick_customizations_food_item ON core_mstr_one_qlick_food_customizations_tbl(food_item_id);
+CREATE INDEX idx_one_qlick_customization_options_customization ON core_mstr_one_qlick_customization_options_tbl(customization_id);
+
+-- Cart related indexes
+CREATE INDEX idx_one_qlick_cart_user ON core_mstr_one_qlick_cart_tbl(user_id);
+CREATE INDEX idx_one_qlick_cart_items_cart ON core_mstr_one_qlick_cart_items_tbl(cart_id);
+CREATE INDEX idx_one_qlick_cart_item_customizations_cart_item ON core_mstr_one_qlick_cart_item_customizations_tbl(cart_item_id);
+CREATE INDEX idx_one_qlick_cart_item_addons_cart_item ON core_mstr_one_qlick_cart_item_addons_tbl(cart_item_id);
+
+-- Order item customizations and add-ons indexes
+CREATE INDEX idx_one_qlick_order_item_customizations_order_item ON core_mstr_one_qlick_order_item_customizations_tbl(order_item_id);
+CREATE INDEX idx_one_qlick_order_item_addons_order_item ON core_mstr_one_qlick_order_item_addons_tbl(order_item_id);
+
+-- User preferences and favorites indexes
+CREATE INDEX idx_one_qlick_user_preferences_user ON core_mstr_one_qlick_user_preferences_tbl(user_id);
+CREATE INDEX idx_one_qlick_user_favorites_user ON core_mstr_one_qlick_user_favorites_tbl(user_id);
+CREATE INDEX idx_one_qlick_user_favorites_restaurant ON core_mstr_one_qlick_user_favorites_tbl(restaurant_id);
+
+-- Payment methods and wallet indexes
+CREATE INDEX idx_one_qlick_user_payment_methods_user ON core_mstr_one_qlick_user_payment_methods_tbl(user_id);
+CREATE INDEX idx_one_qlick_user_wallets_user ON core_mstr_one_qlick_user_wallets_tbl(user_id);
+CREATE INDEX idx_one_qlick_wallet_transactions_wallet ON core_mstr_one_qlick_wallet_transactions_tbl(wallet_id);
+CREATE INDEX idx_one_qlick_wallet_transactions_order ON core_mstr_one_qlick_wallet_transactions_tbl(order_id);
+
+-- Order tracking and driver location indexes
+CREATE INDEX idx_one_qlick_order_status_history_order ON core_mstr_one_qlick_order_status_history_tbl(order_id);
+CREATE INDEX idx_one_qlick_driver_locations_partner ON core_mstr_one_qlick_driver_locations_tbl(delivery_partner_id);
+CREATE INDEX idx_one_qlick_driver_locations_order ON core_mstr_one_qlick_driver_locations_tbl(order_id);
+
+-- Restaurant features and offers indexes
+CREATE INDEX idx_one_qlick_restaurant_features_restaurant ON core_mstr_one_qlick_restaurant_features_tbl(restaurant_id);
+CREATE INDEX idx_one_qlick_restaurant_offers_restaurant ON core_mstr_one_qlick_restaurant_offers_tbl(restaurant_id);
+CREATE INDEX idx_one_qlick_restaurant_offers_active ON core_mstr_one_qlick_restaurant_offers_tbl(is_active);
+
+-- Search and analytics indexes
+CREATE INDEX idx_one_qlick_search_history_user ON core_mstr_one_qlick_search_history_tbl(user_id);
+CREATE INDEX idx_one_qlick_user_analytics_user ON core_mstr_one_qlick_user_analytics_tbl(user_id);
+
+-- Composite indexes for common query patterns
+CREATE INDEX idx_one_qlick_orders_customer_status ON core_mstr_one_qlick_orders_tbl(customer_id, order_status);
+CREATE INDEX idx_one_qlick_orders_restaurant_status ON core_mstr_one_qlick_orders_tbl(restaurant_id, order_status);
+CREATE INDEX idx_one_qlick_food_items_restaurant_status ON core_mstr_one_qlick_food_items_tbl(restaurant_id, status);
+CREATE INDEX idx_one_qlick_restaurants_location_status ON core_mstr_one_qlick_restaurants_tbl(latitude, longitude, status);
+
+-- Partial indexes for active records
+CREATE INDEX idx_one_qlick_restaurants_active ON core_mstr_one_qlick_restaurants_tbl(restaurant_id) WHERE status = 'active';
+CREATE INDEX idx_one_qlick_food_items_available ON core_mstr_one_qlick_food_items_tbl(food_item_id) WHERE status = 'available';
+CREATE INDEX idx_one_qlick_orders_active ON core_mstr_one_qlick_orders_tbl(order_id) WHERE order_status IN ('pending', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery');
+
+-- ====================================================================
+-- ADDITIONAL TRIGGERS FOR UPDATED_AT TIMESTAMPS
+-- ====================================================================
+
+-- Add triggers for new tables with updated_at columns
+CREATE TRIGGER update_one_qlick_cart_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_cart_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_one_qlick_cart_items_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_cart_items_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_one_qlick_user_preferences_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_user_preferences_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_one_qlick_user_payment_methods_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_user_payment_methods_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_one_qlick_user_wallets_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_user_wallets_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_one_qlick_user_analytics_updated_at
+    BEFORE UPDATE ON core_mstr_one_qlick_user_analytics_tbl
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ====================================================================
+-- DATA VALIDATION CONSTRAINTS
+-- ====================================================================
+
+-- Add validation constraints
+ALTER TABLE core_mstr_one_qlick_food_items_tbl 
+ADD CONSTRAINT chk_food_price_positive CHECK (price >= 0);
+
+ALTER TABLE core_mstr_one_qlick_orders_tbl 
+ADD CONSTRAINT chk_order_amount_positive CHECK (total_amount >= 0);
+
+ALTER TABLE core_mstr_one_qlick_user_wallets_tbl 
+ADD CONSTRAINT chk_wallet_balance_non_negative CHECK (balance >= 0);
+
+ALTER TABLE core_mstr_one_qlick_cart_items_tbl 
+ADD CONSTRAINT chk_cart_quantity_positive CHECK (quantity > 0);
+
+ALTER TABLE core_mstr_one_qlick_food_addons_tbl 
+ADD CONSTRAINT chk_addon_price_non_negative CHECK (price >= 0);
+
+-- ====================================================================
 -- COMPLETION MESSAGE
 -- ====================================================================
 
 -- Script execution completed successfully
-SELECT 'oneQlick database setup completed successfully!' as status;
+SELECT 'oneQlick enhanced database setup completed successfully!' as status;

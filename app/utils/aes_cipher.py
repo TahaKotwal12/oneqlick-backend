@@ -3,7 +3,7 @@ from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
-from app.config.config import DATA_CONFIG_AES_KEY
+import os
 
 class AESCipher:
     def __init__(self, key: bytes):
@@ -12,9 +12,9 @@ class AESCipher:
 
     @staticmethod
     def from_env():
-        key = DATA_CONFIG_AES_KEY
+        key = os.getenv("AES_KEY", "")
         if not key:
-            raise ValueError(f"Missing AES key in config: DATA_CONFIG_AES_KEY")
+            raise ValueError("Missing AES key in environment: AES_KEY")
         key_bytes = b64decode(key) if len(key) > 32 else key.encode()
         if len(key_bytes) != 32:
             raise ValueError("AES-256 key must be 32 bytes.")

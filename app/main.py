@@ -3,26 +3,10 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from app.api.exception import EngageFatalException, EngageNonFatalException
-import threading
-import os
-
-from app.api.routes.user_controller import router as user_router
-from app.api.routes.restaurant_controller import router as restaurant_router
-from app.api.routes.home_controller import router as home_router
-
 from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
-from fastapi import Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-import logging
 
 app = FastAPI(title="OneQlick Food Delivery API")
-
-# Include API routes
-app.include_router(user_router, prefix="/api/v1")
-app.include_router(restaurant_router, prefix="/api/v1")
-app.include_router(home_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
