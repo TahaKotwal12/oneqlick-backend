@@ -147,3 +147,11 @@ created_at
 2025-07-27 22:24:32,606 - app.infra.db.postgres.repositories.restaurant_repository - INFO - Found 0 restaurants within 5.0km
 2025-07-27 22:24:32,607 - app.domain.services.restaurant_service - INFO - Found 0 restaurants within 5.0km
 2025-07-27 22:24:32,607 - app.api.routes.restaurant_controller - INFO - Successfully found 0 restaurants within 5.0km
+2025-09-23 22:57:25,949 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-09-23 22:57:26,199 - app.infra.redis.repositories.redis_repositories - INFO - REDIS_CONFIG: {'host': 'localhost', 'port': 6379, 'password': '', 'ttl': 300, 'namespace': 'oneqlick', 'timeout': 10000, 'pool': {'max_active': 20, 'max_idle': 5, 'min_idle': 1}}
+2025-09-23 22:57:30,355 - app.infra.redis.repositories.redis_repositories - ERROR - Failed to initialize Redis client: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+2025-09-23 22:57:30,356 - app.main - WARNING - Redis connection failed: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+2025-09-23 22:59:30,731 - app.infra.db.postgres.postgres_config - INFO - Supabase PostgreSQL database engine created successfully
+2025-09-23 22:59:30,799 - app.infra.redis.repositories.redis_repositories - INFO - REDIS_CONFIG: {'host': 'localhost', 'port': 6379, 'password': '', 'ttl': 300, 'namespace': 'oneqlick', 'timeout': 10000, 'pool': {'max_active': 20, 'max_idle': 5, 'min_idle': 1}}
+2025-09-23 22:59:34,912 - app.infra.redis.repositories.redis_repositories - ERROR - Failed to initialize Redis client: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+2025-09-23 22:59:34,913 - app.main - WARNING - Redis connection failed: Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.

@@ -3,34 +3,60 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from app.api.exception import EngageFatalException, EngageNonFatalException
-import threading
-import os
-
-from app.api.routes.user_controller import router as user_router
-from app.api.routes.restaurant_controller import router as restaurant_router
-from app.api.routes.home_controller import router as home_router
-
 from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
-from fastapi import Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from app.infra.db.postgres.postgres_config import get_db
+from app.infra.redis.repositories.redis_repositories import RedisRepository
 import logging
 
-app = FastAPI(title="OneQlick Food Delivery API")
+APP_TITLE = "OneQlick Backend - Clean Startup"
+app = FastAPI(title=APP_TITLE)
 
-# Include API routes
-app.include_router(user_router, prefix="/api/v1")
-app.include_router(restaurant_router, prefix="/api/v1")
-app.include_router(home_router, prefix="/api/v1")
+# Initialize Redis connection
+try:
+    redis_repo = RedisRepository()
+    logger = get_logger(__name__)
+    logger.info("Redis connection initialized successfully")
+except Exception as e:
+    logger = get_logger(__name__)
+    logger.warning(f"Redis connection failed: {e}")
+    redis_repo = None
 
 @app.get("/")
 async def root():
-    return {"message": "OneQlick Food Delivery API", "status": "running"}
+    return {"message": APP_TITLE, "status": "running"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "OneQlick Food Delivery API"}
+    """Health check endpoint that verifies database and Redis connections"""
+    health_status = {
+        "status": "healthy",
+        "service": APP_TITLE,
+        "database": "unknown",
+        "redis": "unknown"
+    }
+    
+    # Check database connection
+    try:
+        db = next(get_db())
+        db.execute("SELECT 1")
+        health_status["database"] = "connected"
+        db.close()
+    except Exception as e:
+        health_status["database"] = f"error: {str(e)}"
+        health_status["status"] = "unhealthy"
+    
+    # Check Redis connection
+    try:
+        if redis_repo and redis_repo._redis_client:
+            redis_repo._redis_client.ping()
+            health_status["redis"] = "connected"
+        else:
+            health_status["redis"] = "not_configured"
+    except Exception as e:
+        health_status["redis"] = f"error: {str(e)}"
+    
+    return health_status
 
 @app.exception_handler(EngageFatalException)
 async def fatal_exception_handler(request, exc: EngageFatalException):

@@ -1,4 +1,3 @@
-import ssl
 import redis
 from typing import Any, Optional, Dict, List
 import json
@@ -26,21 +25,12 @@ class RedisRepository:
         try:
             # Print the REDIS_CONFIG for debugging
             logger.info(f"REDIS_CONFIG: {REDIS_CONFIG}")
-            ssl_enabled = REDIS_CONFIG["ssl"]["enabled"]
-            ssl_params = {}
-            
-            if ssl_enabled:
-                ssl_params = {
-                    "ssl_ca_certs": REDIS_CONFIG["ssl"]["ca_certification_path"]
-                }
 
             self._redis_client = redis.Redis(
                 host=REDIS_CONFIG["host"],
                 port=REDIS_CONFIG["port"],
                 password=REDIS_CONFIG["password"],
                 socket_timeout=REDIS_CONFIG["timeout"] / 1000,  # Convert ms to seconds
-                ssl=ssl_enabled,
-                ssl_cert_reqs=ssl.CERT_NONE,
                 decode_responses=True
             )
             
@@ -53,12 +43,12 @@ class RedisRepository:
             raise
 
 
-    def delete_pattern(self, keyPrefix: str) -> int:
+    def delete_pattern(self, key_prefix: str) -> int:
         """
         Delete keys matching a pattern using SCAN for efficiency
         """
-        pattern = f"{keyPrefix}*"
-        logger.info(f"Deleting keys with keyPrefix: {keyPrefix}")
+        pattern = f"{key_prefix}*"
+        logger.info(f"Deleting keys with key_prefix: {key_prefix}")
         try:
             if self._redis_client is None:
                 self._initialize_redis_client()
