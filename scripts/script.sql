@@ -13,10 +13,10 @@ CREATE TYPE food_status AS ENUM ('available', 'unavailable', 'out_of_stock');
 -- Order related enums
 CREATE TYPE order_status AS ENUM (
     'pending', 'confirmed', 'preparing', 'ready_for_pickup', 
-    'picked_up', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'
+    'picked_up', 'delivered', 'cancelled', 'refunded'
 );
 CREATE TYPE payment_status AS ENUM ('pending', 'paid', 'failed', 'refunded');
-CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'wallet', 'netbanking', 'cod');
+CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'wallet');
 
 -- Delivery related enums
 CREATE TYPE vehicle_type AS ENUM ('bicycle', 'motorcycle', 'car');
@@ -45,9 +45,6 @@ CREATE TABLE core_mstr_one_qlick_users_tbl (
     profile_image VARCHAR(500),
     email_verified BOOLEAN DEFAULT FALSE,
     phone_verified BOOLEAN DEFAULT FALSE,
-    date_of_birth DATE,
-    gender gender,
-    loyalty_points INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -65,8 +62,6 @@ CREATE TABLE core_mstr_one_qlick_addresses_tbl (
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
     is_default BOOLEAN DEFAULT FALSE,
-    address_type address_type DEFAULT 'home',
-    landmark VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -97,10 +92,6 @@ CREATE TABLE core_mstr_one_qlick_restaurants_tbl (
     is_open BOOLEAN DEFAULT TRUE,
     opening_time TIME,
     closing_time TIME,
-    is_veg BOOLEAN DEFAULT FALSE,
-    is_pure_veg BOOLEAN DEFAULT FALSE,
-    cost_for_two DECIMAL(10, 2),
-    platform_fee DECIMAL(10, 2) DEFAULT 5,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -135,10 +126,6 @@ CREATE TABLE core_mstr_one_qlick_food_items_tbl (
     rating DECIMAL(3, 2) DEFAULT 0,
     total_ratings INTEGER DEFAULT 0,
     sort_order INTEGER DEFAULT 0,
-    is_popular BOOLEAN DEFAULT FALSE,
-    is_recommended BOOLEAN DEFAULT FALSE,
-    nutrition_info JSONB,
-    preparation_time VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -894,92 +881,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ====================================================================
--- ADDITIONAL ENUMS FOR ENHANCED FUNCTIONALITY
--- ====================================================================
-
--- Additional enums for enhanced functionality
-CREATE TYPE address_type AS ENUM ('home', 'work', 'restaurant', 'other');
-CREATE TYPE gender AS ENUM ('male', 'female', 'other');
-CREATE TYPE transaction_type AS ENUM ('credit', 'debit', 'refund');
-CREATE TYPE search_type AS ENUM ('restaurant', 'food', 'general');
-CREATE TYPE review_type AS ENUM ('restaurant', 'delivery');
-
--- ====================================================================
--- ADDITIONAL TABLES FOR ENHANCED FUNCTIONALITY
--- ====================================================================
-
--- Shopping cart table
-CREATE TABLE core_mstr_one_qlick_cart_tbl (
-    cart_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
-    restaurant_id UUID REFERENCES core_mstr_one_qlick_restaurants_tbl(restaurant_id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Cart items table
-CREATE TABLE core_mstr_one_qlick_cart_items_tbl (
-    cart_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cart_id UUID REFERENCES core_mstr_one_qlick_cart_tbl(cart_id) ON DELETE CASCADE,
-    food_item_id UUID REFERENCES core_mstr_one_qlick_food_items_tbl(food_item_id),
-    quantity INTEGER NOT NULL,
-    special_instructions TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- User wallet table
-CREATE TABLE core_mstr_one_qlick_user_wallets_tbl (
-    wallet_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
-    balance DECIMAL(10, 2) DEFAULT 0,
-    currency VARCHAR(3) DEFAULT 'INR',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ====================================================================
--- ADDITIONAL INDEXES FOR NEW TABLES
--- ====================================================================
-
--- Cart related indexes
-CREATE INDEX idx_one_qlick_cart_user ON core_mstr_one_qlick_cart_tbl(user_id);
-CREATE INDEX idx_one_qlick_cart_items_cart ON core_mstr_one_qlick_cart_items_tbl(cart_id);
-
--- User wallet indexes
-CREATE INDEX idx_one_qlick_user_wallets_user ON core_mstr_one_qlick_user_wallets_tbl(user_id);
-
--- ====================================================================
--- ADDITIONAL TRIGGERS FOR NEW TABLES
--- ====================================================================
-
--- Add triggers for new tables with updated_at columns
-CREATE TRIGGER update_one_qlick_cart_updated_at
-    BEFORE UPDATE ON core_mstr_one_qlick_cart_tbl
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_one_qlick_cart_items_updated_at
-    BEFORE UPDATE ON core_mstr_one_qlick_cart_items_tbl
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_one_qlick_user_wallets_updated_at
-    BEFORE UPDATE ON core_mstr_one_qlick_user_wallets_tbl
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- ====================================================================
--- ADDITIONAL CONSTRAINTS FOR NEW TABLES
--- ====================================================================
-
--- Add validation constraints for new tables
-ALTER TABLE core_mstr_one_qlick_cart_items_tbl 
-ADD CONSTRAINT chk_cart_quantity_positive CHECK (quantity > 0);
-
-ALTER TABLE core_mstr_one_qlick_user_wallets_tbl 
-ADD CONSTRAINT chk_wallet_balance_non_negative CHECK (balance >= 0);
-
--- ====================================================================
 -- COMPLETION MESSAGE
 -- ====================================================================
 
 -- Script execution completed successfully
-SELECT 'oneQlick enhanced database setup with authentication and additional models completed successfully!' as status;
+SELECT 'oneQlick enhanced database setup with authentication completed successfully!' as status;
