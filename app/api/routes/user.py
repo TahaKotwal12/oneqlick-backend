@@ -99,7 +99,22 @@ async def update_user_profile(
         # Update user fields
         update_data = profile_data.dict(exclude_unset=True)
         for field, value in update_data.items():
-            setattr(current_user, field, value)
+            # Special handling for gender field to ensure proper enum value
+            if field == 'gender' and value is not None:
+                # Convert to proper enum value
+                if isinstance(value, str):
+                    value = value.lower()
+                # Map to enum
+                gender_map = {'male': Gender.MALE, 'female': Gender.FEMALE, 'other': Gender.OTHER}
+                if value in gender_map:
+                    setattr(current_user, field, gender_map[value])
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid gender value"
+                    )
+            else:
+                setattr(current_user, field, value)
         
         current_user.updated_at = datetime.now(timezone.utc)
         db.commit()

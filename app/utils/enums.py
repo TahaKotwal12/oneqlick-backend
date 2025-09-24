@@ -97,6 +97,9 @@ class Gender(str, Enum):
     MALE = "male"
     FEMALE = "female"
     OTHER = "other"
+    
+    def __str__(self):
+        return self.value
 
 class TransactionType(str, Enum):
     """Wallet transaction types."""

@@ -14,6 +14,9 @@ class UserUpdateRequest(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[Gender] = None
     profile_image: Optional[str] = Field(None, max_length=500)
+    
+    class Config:
+        use_enum_values = True
 
     @validator('phone')
     def validate_phone(cls, v):
@@ -22,6 +25,18 @@ class UserUpdateRequest(BaseModel):
             phone_digits = ''.join(filter(str.isdigit, v))
             if len(phone_digits) < 10 or len(phone_digits) > 15:
                 raise ValueError('Phone number must be between 10 and 15 digits')
+        return v
+    
+    @validator('gender')
+    def validate_gender(cls, v):
+        if v is not None:
+            # Ensure gender is lowercase
+            if isinstance(v, str):
+                v = v.lower()
+            # Validate against enum values
+            valid_genders = ['male', 'female', 'other']
+            if v not in valid_genders:
+                raise ValueError(f'Gender must be one of: {", ".join(valid_genders)}')
         return v
 
 class PasswordChangeRequest(BaseModel):
@@ -106,6 +121,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        use_enum_values = True
 
 class UserProfileResponse(BaseModel):
     """Extended user profile response with addresses"""
