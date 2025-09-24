@@ -7,10 +7,16 @@ from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
 from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
+from app.api.routes import auth
+# Import models to ensure they are registered with SQLAlchemy
+from app.infra.db.postgres.models import *
 import logging
 
 APP_TITLE = "OneQlick Backend - Clean Startup"
 app = FastAPI(title=APP_TITLE)
+
+# Include API routes
+app.include_router(auth.router, prefix="/api/v1")
 
 # Initialize Redis connection
 try:
@@ -38,8 +44,9 @@ async def health_check():
     
     # Check database connection
     try:
+        from sqlalchemy import text
         db = next(get_db())
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         health_status["database"] = "connected"
         db.close()
     except Exception as e:

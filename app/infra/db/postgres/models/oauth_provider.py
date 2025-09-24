@@ -10,7 +10,7 @@ class OAuthProvider(Base):
     __tablename__ = 'core_mstr_one_qlick_oauth_providers_tbl'
 
     oauth_provider_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl(user_id)', ondelete='CASCADE'))
+    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id', ondelete='CASCADE'))
     provider = Column(String(50), nullable=False)  # 'google', 'facebook', 'apple'
     provider_user_id = Column(String(255), nullable=False)
     provider_email = Column(String(255))

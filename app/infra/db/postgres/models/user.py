@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -16,8 +16,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
-    role = Column(Enum(UserRole), nullable=False)
-    status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
+    role = Column(String(20), nullable=False)
+    status = Column(String(20), default='active')
     profile_image = Column(String(500))
     email_verified = Column(Boolean, default=False)
     phone_verified = Column(Boolean, default=False)

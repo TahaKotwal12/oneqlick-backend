@@ -1,7 +1,11 @@
 fastapi>=0.115.8
-psycopg[binary]>=3.2.5
+psycopg2-binary>=2.9.9
 python-dotenv>=1.0.1
 sqlalchemy>=2.0.38
 uvicorn>=0.34.0
 redis>=5.0.0
-pydantic>=2.0.0 
+pydantic>=2.0.0
+pydantic[email]>=2.0.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+httpx>=0.28.1 

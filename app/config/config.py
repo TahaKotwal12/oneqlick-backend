@@ -3,8 +3,8 @@ import os
 
 load_dotenv()  # Load .env file
 
-# Database Configuration - Supabase PostgreSQL
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql+psycopg://postgres.xreynqmhyekjqbyadnnc:One_Qlick123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres')
+# Database Configuration - Neon PostgreSQL
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://neondb_owner:npg_WU6NjGwae1bh@ep-cold-thunder-ad7m6qy2-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
 
 # Database pool configuration
 DB_POOL_MAX_SIZE = int(os.getenv("DB_POOL_MAX_SIZE", "10"))
@@ -54,4 +54,14 @@ NOTIFICATION_CONFIG = {
     "twilio_phone_number": os.getenv("TWILIO_PHONE_NUMBER", ""),
     "msg91_auth_key": os.getenv("MSG91_AUTH_KEY", ""),
     "msg91_template_id": os.getenv("MSG91_TEMPLATE_ID", "")
+}
+
+# Google OAuth Configuration
+GOOGLE_OAUTH_CONFIG = {
+    "client_id": os.getenv("GOOGLE_CLIENT_ID", "1024710005377-603b3r4u26tgehu0nc1d9frjb1j0v1u9.apps.googleusercontent.com"),
+    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+    "project_id": os.getenv("GOOGLE_PROJECT_ID", "pragmatic-braid-445409-h4"),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
 }

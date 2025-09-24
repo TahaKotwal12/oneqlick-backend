@@ -9,6 +9,9 @@ from app.utils.enums import OrderStatus, PaymentStatus, PaymentMethod
 class Order(Base):
     """Orders model."""
     __tablename__ = 'core_mstr_one_qlick_orders_tbl'
+    __table_args__ = (
+        CheckConstraint('rating >= 1 AND rating <= 5', name='check_order_rating_range'),
+    )
 
     order_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     customer_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl(user_id)'))
@@ -29,7 +32,7 @@ class Order(Base):
     actual_delivery_time = Column(TIMESTAMP)
     special_instructions = Column(String)
     cancellation_reason = Column(String)
-    rating = Column(Integer, CheckConstraint('rating >= 1 AND rating <= 5'))
+    rating = Column(Integer)
     review = Column(String)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
