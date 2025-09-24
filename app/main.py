@@ -7,7 +7,7 @@ from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
 from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
-from app.api.routes import auth
+from app.api.routes import auth, user
 # Import models to ensure they are registered with SQLAlchemy
 from app.infra.db.postgres.models import *
 import logging
@@ -17,6 +17,7 @@ app = FastAPI(title=APP_TITLE)
 
 # Include API routes
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(user.router, prefix="/api/v1")
 
 # Initialize Redis connection
 try:
