@@ -111,43 +111,93 @@ class AuthUtils:
         user_agent: Optional[str] = None
     ) -> UserSession:
         """Create or update a user session"""
+        import logging
+        
+        logger = logging.getLogger(__name__)
         device_id = device_info.get("device_id", "unknown")
         
-        # Check if session already exists for this user and device
+        logger.info(f"Creating/updating session for user: {user_id}, device: {device_id}")
+        
+        # First, try to update existing session (active or inactive)
+        # Convert user_id string to UUID for proper comparison
+        from uuid import UUID as UUIDType
+        user_uuid = UUIDType(user_id) if isinstance(user_id, str) else user_id
+        
         existing_session = db.query(UserSession).filter(
-            UserSession.user_id == user_id,
-            UserSession.device_id == device_id,
-            UserSession.is_active == True
+            UserSession.user_id == user_uuid,
+            UserSession.device_id == device_id
         ).first()
         
         if existing_session:
             # Update existing session
+            logger.info(f"Found existing session: {existing_session.session_id}, updating...")
             existing_session.device_name = device_info.get("device_name", existing_session.device_name)
             existing_session.device_type = device_info.get("device_type", existing_session.device_type)
             existing_session.platform = device_info.get("platform", existing_session.platform)
             existing_session.app_version = device_info.get("app_version", existing_session.app_version)
             existing_session.last_activity = datetime.utcnow()
             existing_session.is_active = True
+            existing_session.updated_at = datetime.utcnow()
             
             db.commit()
             db.refresh(existing_session)
+            logger.info(f"Updated existing session: {existing_session.session_id}")
             return existing_session
         else:
+            # Clean up any old inactive sessions for this user-device combination
+            # This ensures we don't hit the unique constraint
+            old_sessions = db.query(UserSession).filter(
+                UserSession.user_id == user_uuid,
+                UserSession.device_id == device_id,
+                UserSession.is_active == False
+            ).all()
+            
+            for old_session in old_sessions:
+                db.delete(old_session)
+                logger.info(f"Deleted old inactive session: {old_session.session_id}")
+            
             # Create new session
+            logger.info(f"No existing session found, creating new one...")
             session = UserSession(
-                user_id=user_id,
+                user_id=user_uuid,
                 device_id=device_id,
                 device_name=device_info.get("device_name", "Unknown Device"),
                 device_type=device_info.get("device_type", "unknown"),
                 platform=device_info.get("platform", "unknown"),
                 app_version=device_info.get("app_version", "1.0.0"),
-                last_activity=datetime.utcnow()
+                last_activity=datetime.utcnow(),
+                is_active=True
             )
             
             db.add(session)
             db.commit()
             db.refresh(session)
+            logger.info(f"Created new session: {session.session_id}")
             return session
+    
+    @staticmethod
+    def cleanup_old_sessions(db: Session, days_old: int = 30) -> int:
+        """Clean up old inactive sessions older than specified days"""
+        import logging
+        from datetime import timedelta
+        
+        logger = logging.getLogger(__name__)
+        cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+        
+        old_sessions = db.query(UserSession).filter(
+            UserSession.is_active == False,
+            UserSession.updated_at < cutoff_date
+        ).all()
+        
+        count = len(old_sessions)
+        for session in old_sessions:
+            db.delete(session)
+        
+        if count > 0:
+            db.commit()
+            logger.info(f"Cleaned up {count} old inactive sessions")
+        
+        return count
     
     @staticmethod
     def create_refresh_token(
@@ -158,12 +208,15 @@ class AuthUtils:
         user_agent: Optional[str] = None
     ) -> RefreshToken:
         """Create a new refresh token"""
+        from uuid import UUID as UUIDType
+        user_uuid = UUIDType(user_id) if isinstance(user_id, str) else user_id
+        
         token = AuthUtils.generate_refresh_token()
         token_hash = AuthUtils.hash_password(token)
         expires_at = datetime.utcnow() + timedelta(days=30)  # 30 days
         
         refresh_token = RefreshToken(
-            user_id=user_id,
+            user_id=user_uuid,
             token_hash=token_hash,
             expires_at=expires_at,
             device_info=device_info,
@@ -189,7 +242,9 @@ class AuthUtils:
     @staticmethod
     def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
         """Get user by ID"""
-        return db.query(User).filter(User.user_id == user_id).first()
+        from uuid import UUID as UUIDType
+        user_uuid = UUIDType(user_id) if isinstance(user_id, str) else user_id
+        return db.query(User).filter(User.user_id == user_uuid).first()
     
     @staticmethod
     def create_user(

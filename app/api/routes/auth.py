@@ -359,7 +359,7 @@ async def logout(
                 logged_out_count += 1
         
         else:
-            # Revoke specific refresh token
+            # Revoke specific refresh token and deactivate corresponding session
             if request.refresh_token:
                 refresh_tokens = db.query(RefreshToken).filter(
                     RefreshToken.user_id == current_user.user_id,
@@ -370,6 +370,18 @@ async def logout(
                     if AuthUtils.verify_password(request.refresh_token, rt.token_hash):
                         rt.is_revoked = True
                         logged_out_count = 1
+                        
+                        # Also deactivate the corresponding session for this device
+                        device_info = rt.device_info
+                        if device_info and 'device_id' in device_info:
+                            session = db.query(UserSession).filter(
+                                UserSession.user_id == current_user.user_id,
+                                UserSession.device_id == device_info['device_id']
+                            ).first()
+                            
+                            if session:
+                                session.is_active = False
+                                logged_out_count += 1
                         break
         
         db.commit()
