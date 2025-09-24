@@ -390,6 +390,86 @@ async def logout(
             detail=f"Logout failed: {str(e)}"
         )
 
+@router.post("/logout-token", response_model=CommonResponse[LogoutResponse])
+async def logout_with_token(
+    request: LogoutRequest,
+    db: Session = Depends(get_db)
+):
+    """User logout using refresh token (public endpoint)"""
+    try:
+        logged_out_count = 0
+        
+        # Find the refresh token
+        refresh_token_obj = db.query(RefreshToken).filter(
+            RefreshToken.token_hash == AuthUtils.hash_refresh_token(request.refresh_token),
+            RefreshToken.is_revoked == False
+        ).first()
+        
+        if not refresh_token_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid refresh token"
+            )
+        
+        user_id = refresh_token_obj.user_id
+        
+        if request.logout_all_devices:
+            # Revoke all refresh tokens for user
+            refresh_tokens = db.query(RefreshToken).filter(
+                RefreshToken.user_id == user_id,
+                RefreshToken.is_revoked == False
+            ).all()
+            
+            for rt in refresh_tokens:
+                rt.is_revoked = True
+                logged_out_count += 1
+            
+            # Deactivate all sessions
+            sessions = db.query(UserSession).filter(
+                UserSession.user_id == user_id,
+                UserSession.is_active == True
+            ).all()
+            
+            for session in sessions:
+                session.is_active = False
+                logged_out_count += 1
+        
+        else:
+            # Revoke specific refresh token
+            refresh_token_obj.is_revoked = True
+            logged_out_count += 1
+            
+            # Deactivate specific session if exists
+            session = db.query(UserSession).filter(
+                UserSession.user_id == user_id,
+                UserSession.device_id == refresh_token_obj.device_id,
+                UserSession.is_active == True
+            ).first()
+            
+            if session:
+                session.is_active = False
+                logged_out_count += 1
+        
+        db.commit()
+        
+        return CommonResponse(
+            code=200,
+            message="Logout successful",
+            message_id="LOGOUT_SUCCESS",
+            data=LogoutResponse(
+                logged_out_count=logged_out_count,
+                logout_all_devices=request.logout_all_devices
+            )
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Logout failed: {str(e)}"
+        )
+
 @router.get("/sessions", response_model=CommonResponse[UserSessionsResponse])
 async def get_user_sessions(
     current_user: User = Depends(get_current_user),

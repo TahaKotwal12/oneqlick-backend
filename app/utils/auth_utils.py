@@ -98,6 +98,11 @@ class AuthUtils:
             return None
     
     @staticmethod
+    def hash_refresh_token(token: str) -> str:
+        """Hash a refresh token for database storage"""
+        return bcrypt.hashpw(token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    @staticmethod
     def create_user_session(
         db: Session, 
         user_id: str, 
