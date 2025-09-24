@@ -79,15 +79,27 @@ Thumbs.db
 # ----------------------------------------
 # Django / Flask / Database
 # ----------------------------------------
-*.log
 *.sqlite3
 local_settings.py
 instance/
 .webassets-cache
-app.log
 
 # ----------------------------------------
-# Logs
+# Logs and Runtime Files
 # ----------------------------------------
-logs
+# All log files
+*.log
+logs/
+logs/*
+**/logs/
+**/logs/*
+
+# Specific log files
+app.log
+logs/app.log
 ../logs/app.log
+
+# Runtime files
+*.pid
+*.sock
+*.tmp
