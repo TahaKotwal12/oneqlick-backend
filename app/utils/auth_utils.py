@@ -105,21 +105,44 @@ class AuthUtils:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> UserSession:
-        """Create a new user session"""
-        session = UserSession(
-            user_id=user_id,
-            device_id=device_info.get("device_id"),
-            device_name=device_info.get("device_name"),
-            device_type=device_info.get("device_type"),
-            platform=device_info.get("platform"),
-            app_version=device_info.get("app_version"),
-            last_activity=datetime.utcnow()
-        )
+        """Create or update a user session"""
+        device_id = device_info.get("device_id", "unknown")
         
-        db.add(session)
-        db.commit()
-        db.refresh(session)
-        return session
+        # Check if session already exists for this user and device
+        existing_session = db.query(UserSession).filter(
+            UserSession.user_id == user_id,
+            UserSession.device_id == device_id,
+            UserSession.is_active == True
+        ).first()
+        
+        if existing_session:
+            # Update existing session
+            existing_session.device_name = device_info.get("device_name", existing_session.device_name)
+            existing_session.device_type = device_info.get("device_type", existing_session.device_type)
+            existing_session.platform = device_info.get("platform", existing_session.platform)
+            existing_session.app_version = device_info.get("app_version", existing_session.app_version)
+            existing_session.last_activity = datetime.utcnow()
+            existing_session.is_active = True
+            
+            db.commit()
+            db.refresh(existing_session)
+            return existing_session
+        else:
+            # Create new session
+            session = UserSession(
+                user_id=user_id,
+                device_id=device_id,
+                device_name=device_info.get("device_name", "Unknown Device"),
+                device_type=device_info.get("device_type", "unknown"),
+                platform=device_info.get("platform", "unknown"),
+                app_version=device_info.get("app_version", "1.0.0"),
+                last_activity=datetime.utcnow()
+            )
+            
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+            return session
     
     @staticmethod
     def create_refresh_token(

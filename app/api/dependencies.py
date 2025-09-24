@@ -83,14 +83,53 @@ async def get_optional_current_user(
 
 def get_device_info(request: Request) -> dict:
     """Extract device information from request headers"""
+    import hashlib
+    
+    # Generate a more unique device ID based on user agent and IP
+    user_agent = request.headers.get("user-agent", "")
+    ip_address = request.client.host if request.client else "unknown"
+    
+    # Create a hash-based device ID if not provided
+    device_id = request.headers.get("x-device-id")
+    if not device_id or device_id == "unknown":
+        # Generate a unique device ID based on user agent and IP
+        device_string = f"{user_agent}_{ip_address}"
+        device_id = hashlib.md5(device_string.encode()).hexdigest()[:16]
+    
+    # Detect platform from user agent
+    platform = request.headers.get("x-platform", "unknown")
+    if platform == "unknown" and user_agent:
+        if "Mobile" in user_agent or "Android" in user_agent:
+            platform = "mobile"
+        elif "iPhone" in user_agent or "iPad" in user_agent:
+            platform = "ios"
+        elif "Windows" in user_agent:
+            platform = "windows"
+        elif "Mac" in user_agent:
+            platform = "macos"
+        elif "Linux" in user_agent:
+            platform = "linux"
+        else:
+            platform = "web"
+    
+    # Detect device type
+    device_type = request.headers.get("x-device-type", "unknown")
+    if device_type == "unknown" and user_agent:
+        if "Mobile" in user_agent or "Android" in user_agent or "iPhone" in user_agent:
+            device_type = "mobile"
+        elif "iPad" in user_agent or "Tablet" in user_agent:
+            device_type = "tablet"
+        else:
+            device_type = "desktop"
+    
     return {
-        "device_id": request.headers.get("x-device-id", "unknown"),
-        "device_name": request.headers.get("x-device-name", "Unknown Device"),
-        "device_type": request.headers.get("x-device-type", "unknown"),
-        "platform": request.headers.get("x-platform", "unknown"),
+        "device_id": device_id,
+        "device_name": request.headers.get("x-device-name", f"Device-{device_id[:8]}"),
+        "device_type": device_type,
+        "platform": platform,
         "app_version": request.headers.get("x-app-version", "1.0.0"),
-        "ip_address": request.client.host if request.client else None,
-        "user_agent": request.headers.get("user-agent")
+        "ip_address": ip_address,
+        "user_agent": user_agent
     }
 
 def require_roles(*allowed_roles):
