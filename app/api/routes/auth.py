@@ -399,9 +399,9 @@ async def logout_with_token(
     try:
         logged_out_count = 0
         
-        # Find the refresh token
+        # Find the refresh token (it's already hashed in database)
         refresh_token_obj = db.query(RefreshToken).filter(
-            RefreshToken.token_hash == AuthUtils.hash_refresh_token(request.refresh_token),
+            RefreshToken.token_hash == request.refresh_token,
             RefreshToken.is_revoked == False
         ).first()
         
@@ -440,15 +440,17 @@ async def logout_with_token(
             logged_out_count += 1
             
             # Deactivate specific session if exists
-            session = db.query(UserSession).filter(
-                UserSession.user_id == user_id,
-                UserSession.device_id == refresh_token_obj.device_id,
-                UserSession.is_active == True
-            ).first()
-            
-            if session:
-                session.is_active = False
-                logged_out_count += 1
+            device_id = refresh_token_obj.device_info.get('device_id') if refresh_token_obj.device_info else None
+            if device_id:
+                session = db.query(UserSession).filter(
+                    UserSession.user_id == user_id,
+                    UserSession.device_id == device_id,
+                    UserSession.is_active == True
+                ).first()
+                
+                if session:
+                    session.is_active = False
+                    logged_out_count += 1
         
         db.commit()
         
@@ -457,8 +459,8 @@ async def logout_with_token(
             message="Logout successful",
             message_id="LOGOUT_SUCCESS",
             data=LogoutResponse(
-                logged_out_count=logged_out_count,
-                logout_all_devices=request.logout_all_devices
+                message="Logout successful",
+                logged_out_devices=logged_out_count
             )
         )
         

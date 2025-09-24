@@ -19,6 +19,7 @@ class UserSession(Base):
     is_active = Column(Boolean, default=True)
     last_activity = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
     
     __table_args__ = (
         UniqueConstraint('user_id', 'device_id', name='unique_user_device'),
