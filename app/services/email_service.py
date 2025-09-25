@@ -115,7 +115,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🍽️ oneQlick</h1>
+                    <h1>oneQlick</h1>
                     <h2>{{ subject }}</h2>
                 </div>
                 <div class="content">
@@ -297,7 +297,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🍽️ Welcome to oneQlick!</h1>
+                    <h1>Welcome to oneQlick!</h1>
                     <h2>Your Food Journey Starts Here</h2>
                 </div>
                 <div class="content">
