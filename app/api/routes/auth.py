@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.infra.db.postgres.postgres_config import get_db
 from app.api.schemas.auth_schemas import (
