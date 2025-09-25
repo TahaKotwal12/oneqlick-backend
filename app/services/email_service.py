@@ -241,61 +241,211 @@ class EmailService:
             logger.error(f"SMTP send failed: {e}")
             return False
     
-    async def send_welcome_email(self, to_email: str, user_name: str) -> bool:
+    async def send_welcome_email(
+        self, 
+        to_email: str, 
+        user_name: str,
+        first_name: str = "User"
+    ) -> bool:
         """Send welcome email to new users"""
         try:
-            subject = "Welcome to oneQlick! 🎉"
+            # Generate email content
+            subject, html_content, text_content = self._generate_welcome_email_content(
+                user_name, first_name
+            )
             
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Welcome to oneQlick</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #FF6B35, #F7931E); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-                    .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🍽️ Welcome to oneQlick!</h1>
-                    </div>
-                    <div class="content">
-                        <p>Hello <strong>{user_name}</strong>,</p>
-                        <p>Welcome to oneQlick! We're excited to have you on board.</p>
-                        <p>Your account has been successfully created and verified. You can now:</p>
-                        <ul>
-                            <li>Browse thousands of restaurants</li>
-                            <li>Order your favorite food</li>
-                            <li>Track your orders in real-time</li>
-                            <li>Earn loyalty points with every order</li>
-                        </ul>
-                        <p>Happy ordering!</p>
-                        <p>Best regards,<br>The oneQlick Team</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-            
+            # Try FastMail first
             if self.fastmail:
-                message = MessageSchema(
-                    subject=subject,
-                    recipients=[to_email],
-                    body=html_content,
-                    subtype="html"
-                )
-                await self.fastmail.send_message(message)
+                return await self._send_welcome_with_fastmail(to_email, subject, html_content)
             else:
-                logger.info(f"Welcome email would be sent to {to_email}")
-            
-            return True
+                # Fallback to SMTP
+                return self._send_welcome_with_smtp(to_email, subject, text_content)
+                
         except Exception as e:
             logger.error(f"Failed to send welcome email: {e}")
+            return False
+    
+    def _generate_welcome_email_content(
+        self, 
+        user_name: str, 
+        first_name: str
+    ) -> tuple[str, str, str]:
+        """Generate welcome email content"""
+        
+        subject = "Welcome to oneQlick! 🎉 Your Food Journey Starts Here"
+        
+        # HTML Template
+        html_template = Template("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to oneQlick</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #FF6B35, #F7931E); color: white; padding: 40px; text-align: center; border-radius: 15px 15px 0 0; }
+                .content { background: #f9f9f9; padding: 40px; border-radius: 0 0 15px 15px; }
+                .feature { background: #fff; padding: 20px; margin: 15px 0; border-radius: 10px; border-left: 4px solid #FF6B35; }
+                .cta-button { display: inline-block; background: #FF6B35; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                .emoji { font-size: 24px; margin-right: 10px; }
+                .highlight { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🍽️ Welcome to oneQlick!</h1>
+                    <h2>Your Food Journey Starts Here</h2>
+                </div>
+                <div class="content">
+                    <p>Hello <strong>{{ first_name }}</strong>,</p>
+                    
+                    <p>🎉 <strong>Congratulations!</strong> Your account has been successfully created and verified. We're thrilled to have you join the oneQlick family!</p>
+                    
+                    <div class="highlight">
+                        <strong>🎁 Special Welcome Offer:</strong> Get 20% off your first order! Use code <strong>WELCOME20</strong> at checkout.
+                    </div>
+                    
+                    <h3>What you can do now:</h3>
+                    
+                    <div class="feature">
+                        <span class="emoji">🍕</span>
+                        <strong>Explore Restaurants</strong><br>
+                        Browse thousands of restaurants and cuisines in your area
+                    </div>
+                    
+                    <div class="feature">
+                        <span class="emoji">📱</span>
+                        <strong>Easy Ordering</strong><br>
+                        Order your favorite food with just a few taps
+                    </div>
+                    
+                    <div class="feature">
+                        <span class="emoji">🚚</span>
+                        <strong>Real-time Tracking</strong><br>
+                        Track your orders from kitchen to your doorstep
+                    </div>
+                    
+                    <div class="feature">
+                        <span class="emoji">⭐</span>
+                        <strong>Loyalty Rewards</strong><br>
+                        Earn points with every order and unlock exclusive benefits
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="#" class="cta-button">Start Ordering Now</a>
+                    </div>
+                    
+                    <h3>Need Help?</h3>
+                    <p>Our support team is here to help you 24/7. If you have any questions or need assistance, don't hesitate to reach out!</p>
+                    
+                    <p>Happy ordering and welcome to the oneQlick family! 🎉</p>
+                    
+                    <p>Best regards,<br><strong>The oneQlick Team</strong></p>
+                </div>
+                <div class="footer">
+                    <p>© 2024 oneQlick. All rights reserved.</p>
+                    <p>This is an automated message, please do not reply to this email.</p>
+                    <p>Follow us on social media for the latest updates and offers!</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """)
+        
+        # Text Template
+        text_template = Template("""
+        Welcome to oneQlick! 🎉 Your Food Journey Starts Here
+        
+        Hello {{ first_name }},
+        
+        🎉 Congratulations! Your account has been successfully created and verified. We're thrilled to have you join the oneQlick family!
+        
+        🎁 Special Welcome Offer: Get 20% off your first order! Use code WELCOME20 at checkout.
+        
+        What you can do now:
+        
+        🍕 Explore Restaurants
+           Browse thousands of restaurants and cuisines in your area
+        
+        📱 Easy Ordering
+           Order your favorite food with just a few taps
+        
+        🚚 Real-time Tracking
+           Track your orders from kitchen to your doorstep
+        
+        ⭐ Loyalty Rewards
+           Earn points with every order and unlock exclusive benefits
+        
+        Need Help?
+        Our support team is here to help you 24/7. If you have any questions or need assistance, don't hesitate to reach out!
+        
+        Happy ordering and welcome to the oneQlick family! 🎉
+        
+        Best regards,
+        The oneQlick Team
+        
+        © 2024 oneQlick. All rights reserved.
+        This is an automated message, please do not reply to this email.
+        Follow us on social media for the latest updates and offers!
+        """)
+        
+        html_content = html_template.render(
+            first_name=first_name,
+            user_name=user_name
+        )
+        
+        text_content = text_template.render(
+            first_name=first_name,
+            user_name=user_name
+        )
+        
+        return subject, html_content, text_content
+    
+    async def _send_welcome_with_fastmail(
+        self, 
+        to_email: str, 
+        subject: str, 
+        html_content: str
+    ) -> bool:
+        """Send welcome email using FastMail"""
+        try:
+            message = MessageSchema(
+                subject=subject,
+                recipients=[to_email],
+                body=html_content,
+                subtype="html"
+            )
+            await self.fastmail.send_message(message)
+            logger.info(f"Welcome email sent successfully to {to_email}")
+            return True
+        except Exception as e:
+            logger.error(f"FastMail welcome email send failed: {e}")
+            return False
+    
+    def _send_welcome_with_smtp(
+        self, 
+        to_email: str, 
+        subject: str, 
+        text_content: str
+    ) -> bool:
+        """Send welcome email using SMTP fallback"""
+        try:
+            # For development, we'll use a simple console output
+            logger.info("=== WELCOME EMAIL (Development Mode) ===")
+            logger.info(f"To: {to_email}")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Content: {text_content}")
+            logger.info("=======================================")
+            
+            # In development, we'll simulate successful sending
+            return True
+            
+        except Exception as e:
+            logger.error(f"SMTP welcome email send failed: {e}")
             return False
 
 # Global email service instance

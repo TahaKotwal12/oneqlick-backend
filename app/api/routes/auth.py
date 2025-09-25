@@ -613,6 +613,27 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         
         db.commit()
         
+        # Send welcome email for email verification
+        if request.otp_type == "email_verification":
+            try:
+                from app.services.email_service import email_service
+                
+                # Send welcome email
+                welcome_sent = await email_service.send_welcome_email(
+                    to_email=user.email,
+                    user_name=f"{user.first_name} {user.last_name}",
+                    first_name=user.first_name
+                )
+                
+                if welcome_sent:
+                    logger.info(f"Welcome email sent to {user.email}")
+                else:
+                    logger.warning(f"Failed to send welcome email to {user.email}")
+                    
+            except Exception as e:
+                logger.error(f"Error sending welcome email: {e}")
+                # Don't fail the verification if welcome email fails
+        
         # Check if profile completion is required
         requires_profile_completion = (
             not user.first_name or 
