@@ -142,9 +142,39 @@ async def signup(
             http_request.headers.get("user-agent")
         )
         
+        # Send OTP for email verification
+        try:
+            from app.utils.otp_utils import OTPUtils
+            from app.services.email_service import email_service
+            
+            # Create OTP record for email verification
+            otp_record = OTPUtils.create_otp_record(
+                db=db,
+                user_id=str(user.user_id),
+                email=request.email,
+                otp_type="email_verification"
+            )
+            
+            if otp_record:
+                # Send OTP email
+                email_sent = await email_service.send_otp_email(
+                    to_email=request.email,
+                    otp_code=otp_record.otp_code,
+                    user_name=f"{user.first_name} {user.last_name}",
+                    otp_type="email_verification"
+                )
+                
+                if email_sent:
+                    logger.info(f"OTP sent to {request.email} for new user {user.user_id}")
+                else:
+                    logger.warning(f"Failed to send OTP email to {request.email}")
+        except Exception as e:
+            logger.error(f"Failed to send OTP for new user: {e}")
+            # Don't fail signup if OTP sending fails
+        
         return CommonResponse(
             code=201,
-            message="User registered successfully",
+            message="User registered successfully. Please verify your email.",
             message_id="SIGNUP_SUCCESS",
             data=SignupResponse(
                 user=user,
@@ -283,7 +313,7 @@ async def refresh_token(
             )
         
         # Check if token is expired
-        if refresh_token_obj.expires_at < datetime.utcnow():
+        if refresh_token_obj.expires_at < datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token expired"
@@ -304,7 +334,7 @@ async def refresh_token(
         
         # Update refresh token
         refresh_token_obj.token_hash = new_refresh_token_hash
-        refresh_token_obj.expires_at = datetime.utcnow() + timedelta(days=30)
+        refresh_token_obj.expires_at = datetime.now(timezone.utc) + timedelta(days=30)
         db.commit()
         
         return CommonResponse(
@@ -442,34 +472,260 @@ async def get_user_sessions(
             detail=f"Failed to retrieve sessions: {str(e)}"
         )
 
-# Placeholder endpoints for OTP functionality
+# Constants
+EMAIL_OR_PHONE_REQUIRED = "Either email or phone must be provided"
+USER_NOT_FOUND = "User not found"
+
+# OTP functionality endpoints
 @router.post("/send-otp", response_model=CommonResponse[SendOTPResponse])
 async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
     """Send OTP for verification"""
-    # TODO: Implement OTP sending logic
-    return CommonResponse(
-        code=200,
-        message="OTP functionality will be implemented",
-        message_id="OTP_PLACEHOLDER",
-        data=SendOTPResponse(
-            message="OTP sent successfully",
-            expires_in=300,
+    try:
+        from app.utils.otp_utils import OTPUtils
+        from app.services.email_service import email_service
+        
+        # Validate request
+        if not request.email and not request.phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=EMAIL_OR_PHONE_REQUIRED
+            )
+        
+        # Get user by email or phone
+        user = OTPUtils.get_user_by_otp_identifier(db, request.email, request.phone)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=USER_NOT_FOUND
+            )
+        
+        # Create OTP record
+        otp_record = OTPUtils.create_otp_record(
+            db=db,
+            user_id=str(user.user_id),
+            email=request.email,
             phone=request.phone,
-            email=request.email
+            otp_type=request.otp_type
         )
-    )
+        
+        if not otp_record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create OTP record"
+            )
+        
+        # Send OTP via email
+        if request.email:
+            email_sent = await email_service.send_otp_email(
+                to_email=request.email,
+                otp_code=otp_record.otp_code,
+                user_name=f"{user.first_name} {user.last_name}",
+                otp_type=request.otp_type
+            )
+            
+            if not email_sent:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send OTP email"
+                )
+        
+        # TODO: Implement SMS sending for phone verification
+        if request.phone:
+            # For now, just log the OTP for development
+            logger.info(f"OTP for phone {request.phone}: {otp_record.otp_code}")
+        
+        return CommonResponse(
+            code=200,
+            message="OTP sent successfully",
+            message_id="OTP_SENT_SUCCESS",
+            data=SendOTPResponse(
+                message="OTP sent successfully",
+                expires_in=OTPUtils.OTP_EXPIRY_MINUTES * 60,  # Convert to seconds
+                phone=request.phone,
+                email=request.email
+            )
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send OTP error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send OTP: {str(e)}"
+        )
 
 @router.post("/verify-otp", response_model=CommonResponse[VerifyOTPResponse])
 async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
     """Verify OTP"""
-    # TODO: Implement OTP verification logic
-    return CommonResponse(
-        code=200,
-        message="OTP verification will be implemented",
-        message_id="OTP_VERIFY_PLACEHOLDER",
-        data=VerifyOTPResponse(
-            verified=True,
-            message="OTP verified successfully",
-            requires_profile_completion=False
+    try:
+        from app.utils.otp_utils import OTPUtils
+        
+        # Validate request
+        if not request.email and not request.phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either email or phone must be provided"
+            )
+        
+        # Verify OTP
+        verification_result = OTPUtils.verify_otp(
+            db=db,
+            otp_code=request.otp_code,
+            email=request.email,
+            phone=request.phone,
+            otp_type=request.otp_type
         )
-    )
+        
+        if not verification_result["success"]:
+            # Increment attempts for failed verification
+            OTPUtils.increment_otp_attempts(
+                db=db,
+                otp_code=request.otp_code,
+                email=request.email,
+                phone=request.phone,
+                otp_type=request.otp_type
+            )
+            
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=verification_result["message"]
+            )
+        
+        # Get user
+        user = OTPUtils.get_user_by_otp_identifier(db, request.email, request.phone)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Update user verification status based on OTP type
+        if request.otp_type == "email_verification":
+            user.email_verified = True
+        elif request.otp_type == "phone_verification":
+            user.phone_verified = True
+        
+        db.commit()
+        
+        # Check if profile completion is required
+        requires_profile_completion = (
+            not user.first_name or 
+            not user.last_name or 
+            not user.email_verified or 
+            not user.phone_verified
+        )
+        
+        return CommonResponse(
+            code=200,
+            message="OTP verified successfully",
+            message_id="OTP_VERIFIED_SUCCESS",
+            data=VerifyOTPResponse(
+                verified=True,
+                message="OTP verified successfully",
+                requires_profile_completion=requires_profile_completion
+            )
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Verify OTP error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to verify OTP: {str(e)}"
+        )
+
+@router.post("/resend-otp", response_model=CommonResponse[SendOTPResponse])
+async def resend_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
+    """Resend OTP for verification"""
+    try:
+        from app.utils.otp_utils import OTPUtils
+        from app.services.email_service import email_service
+        
+        # Validate request
+        if not request.email and not request.phone:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=EMAIL_OR_PHONE_REQUIRED
+            )
+        
+        # Get user by email or phone
+        user = OTPUtils.get_user_by_otp_identifier(db, request.email, request.phone)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=USER_NOT_FOUND
+            )
+        
+        # Check if user is already verified
+        if request.otp_type == "email_verification" and user.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is already verified"
+            )
+        
+        if request.otp_type == "phone_verification" and user.phone_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone is already verified"
+            )
+        
+        # Create new OTP record (this will invalidate existing ones)
+        otp_record = OTPUtils.create_otp_record(
+            db=db,
+            user_id=str(user.user_id),
+            email=request.email,
+            phone=request.phone,
+            otp_type=request.otp_type
+        )
+        
+        if not otp_record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create OTP record"
+            )
+        
+        # Send OTP via email
+        if request.email:
+            email_sent = await email_service.send_otp_email(
+                to_email=request.email,
+                otp_code=otp_record.otp_code,
+                user_name=f"{user.first_name} {user.last_name}",
+                otp_type=request.otp_type
+            )
+            
+            if not email_sent:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send OTP email"
+                )
+        
+        # TODO: Implement SMS sending for phone verification
+        if request.phone:
+            # For now, just log the OTP for development
+            logger.info(f"Resend OTP for phone {request.phone}: {otp_record.otp_code}")
+        
+        return CommonResponse(
+            code=200,
+            message="OTP resent successfully",
+            message_id="OTP_RESENT_SUCCESS",
+            data=SendOTPResponse(
+                message="OTP resent successfully",
+                expires_in=OTPUtils.OTP_EXPIRY_MINUTES * 60,  # Convert to seconds
+                phone=request.phone,
+                email=request.email
+            )
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resend OTP error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resend OTP: {str(e)}"
+        )
