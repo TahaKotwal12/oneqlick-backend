@@ -705,7 +705,7 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 detail="Either email or phone must be provided"
             )
         
-        # Get user by email or phone
+        # Get user by email or p hone
         user = None
         if request.email:
             user = AuthUtils.get_user_by_email(db, request.email)
