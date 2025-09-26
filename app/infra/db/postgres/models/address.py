@@ -24,3 +24,4 @@ class Address(Base):
     address_type = Column(Enum(AddressType), default=AddressType.HOME)
     landmark = Column(String(255))
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+  
