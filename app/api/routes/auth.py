@@ -741,17 +741,17 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
             logger.info(f"Phone OTP: {otp_record.otp_code} for {request.phone}")
             # TODO: Implement actual SMS sending service integration
         
-    return CommonResponse(
-        code=200,
+        return CommonResponse(
+            code=200,
             message="OTP sent successfully",
             message_id="OTP_SENT_SUCCESS",
             data=SendOTPResponse(
                 message="OTP sent successfully",
                 expires_in=600,  # 10 minutes
-            phone=request.phone,
-            email=request.email
+                phone=request.phone,
+                email=request.email
+            )
         )
-    )
     
     except HTTPException:
         raise
