@@ -805,16 +805,16 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
             user.updated_at = datetime.now(timezone.utc)
             db.commit()
         
-    return CommonResponse(
-        code=200,
+        return CommonResponse(
+            code=200,
             message=OTP_VERIFIED_SUCCESS_MESSAGE,
             message_id="OTP_VERIFY_SUCCESS",
-        data=VerifyOTPResponse(
-            verified=True,
+            data=VerifyOTPResponse(
+                verified=True,
                 message=OTP_VERIFIED_SUCCESS_MESSAGE,
-            requires_profile_completion=False
+                requires_profile_completion=False
+            )
         )
-    )
     
     except HTTPException:
         raise
