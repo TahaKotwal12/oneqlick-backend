@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timezone
@@ -10,7 +11,8 @@ from app.api.schemas.user_schemas import (
     UserUpdateRequest, PasswordChangeRequest, AddressCreateRequest, AddressUpdateRequest,
     UserPreferencesRequest, UserResponse, UserProfileResponse, UserStatsResponse,
     UserSessionResponse, UserSessionsResponse, UserListResponse, UserSearchRequest,
-    UserStatusUpdateRequest, UserRoleUpdateRequest, PaginationParams, AddressResponse
+    UserStatusUpdateRequest, UserRoleUpdateRequest, PaginationParams, AddressResponse,
+    AddressSearchRequest, AddressSetDefaultRequest, AddressValidationRequest, AddressValidationResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.user import User
@@ -18,7 +20,7 @@ from app.infra.db.postgres.models.address import Address
 from app.infra.db.postgres.models.user_session import UserSession
 from app.infra.db.postgres.models.order import Order
 from app.utils.auth_utils import AuthUtils
-from app.utils.enums import UserRole, UserStatus
+from app.utils.enums import UserRole, UserStatus, AddressType
 from app.config.logger import get_logger
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -352,6 +354,7 @@ async def delete_address(
                 detail="Address not found"
             )
         
+        # Delete the address
         db.delete(address)
         db.commit()
         
@@ -359,7 +362,7 @@ async def delete_address(
             code=200,
             message="Address deleted successfully",
             message_id="ADDRESS_DELETE_SUCCESS",
-            data={"message": "Address deleted successfully"}
+            data={"deleted_address_id": str(address_id)}
         )
     
     except HTTPException:
@@ -369,6 +372,185 @@ async def delete_address(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete address"
+        )
+
+@router.get("/addresses/search", response_model=CommonResponse[List[AddressResponse]])
+async def search_addresses(
+    query: str = Query(..., min_length=1, max_length=100, description="Search query"),
+    address_type: Optional[AddressType] = Query(None, description="Filter by address type"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search addresses for the current user"""
+    try:
+        # Build query
+        search_query = db.query(Address).filter(
+            Address.user_id == current_user.user_id
+        )
+        
+        # Add search filters
+        search_terms = f"%{query.lower()}%"
+        search_query = search_query.filter(
+            or_(
+                Address.title.ilike(search_terms),
+                Address.full_name.ilike(search_terms),
+                Address.address_line1.ilike(search_terms),
+                Address.address_line2.ilike(search_terms),
+                Address.city.ilike(search_terms),
+                Address.state.ilike(search_terms),
+                Address.postal_code.ilike(search_terms),
+                Address.landmark.ilike(search_terms)
+            )
+        )
+        
+        # Filter by address type if provided
+        if address_type:
+            search_query = search_query.filter(Address.address_type == address_type)
+        
+        # Apply limit and order
+        addresses = search_query.order_by(
+            Address.is_default.desc(), 
+            Address.created_at.desc()
+        ).limit(limit).all()
+        
+        return CommonResponse(
+            code=200,
+            message="Address search completed",
+            message_id="ADDRESS_SEARCH_SUCCESS",
+            data=addresses
+        )
+    
+    except Exception as e:
+        logger.error(f"Error searching addresses: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search addresses"
+        )
+
+@router.put("/addresses/{address_id}/set-default", response_model=CommonResponse[AddressResponse])
+async def set_default_address(
+    address_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Set an address as default"""
+    try:
+        # Get the address
+        address = db.query(Address).filter(
+            Address.address_id == address_id,
+            Address.user_id == current_user.user_id
+        ).first()
+        
+        if not address:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Address not found"
+            )
+        
+        # Unset all other default addresses
+        db.query(Address).filter(
+            Address.user_id == current_user.user_id,
+            Address.is_default == True,
+            Address.address_id != address_id
+        ).update({"is_default": False})
+        
+        # Set this address as default
+        address.is_default = True
+        db.commit()
+        db.refresh(address)
+        
+        return CommonResponse(
+            code=200,
+            message="Default address updated successfully",
+            message_id="ADDRESS_SET_DEFAULT_SUCCESS",
+            data=address
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting default address: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to set default address"
+        )
+
+@router.post("/addresses/validate", response_model=CommonResponse[AddressValidationResponse])
+async def validate_address(
+    validation_data: AddressValidationRequest,
+    db: Session = Depends(get_db)
+):
+    """Validate if an address is deliverable"""
+    try:
+        # Mock delivery areas - in production, this would query a delivery areas table
+        delivery_areas = {
+            "249201": {"city": "Haridwar", "state": "Uttarakhand", "is_deliverable": True},
+            "249202": {"city": "Haridwar", "state": "Uttarakhand", "is_deliverable": True},
+            "248001": {"city": "Dehradun", "state": "Uttarakhand", "is_deliverable": True},
+            "400001": {"city": "Mumbai", "state": "Maharashtra", "is_deliverable": True},
+        }
+        
+        postal_code = validation_data.postal_code
+        is_deliverable = postal_code in delivery_areas
+        
+        if is_deliverable:
+            area_info = delivery_areas[postal_code]
+            message = f"Delivery available to {area_info['city']}, {area_info['state']}"
+        else:
+            message = "Delivery not available to this area"
+        
+        return CommonResponse(
+            code=200,
+            message="Address validation completed",
+            message_id="ADDRESS_VALIDATION_SUCCESS",
+            data=AddressValidationResponse(
+                is_valid=True,
+                is_deliverable=is_deliverable,
+                delivery_areas=[postal_code] if is_deliverable else [],
+                message=message
+            )
+        )
+    
+    except Exception as e:
+        logger.error(f"Error validating address: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate address"
+        )
+
+@router.get("/addresses/default", response_model=CommonResponse[AddressResponse])
+async def get_default_address(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the default address for the current user"""
+    try:
+        address = db.query(Address).filter(
+            Address.user_id == current_user.user_id,
+            Address.is_default == True
+        ).first()
+        
+        if not address:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No default address found"
+            )
+        
+        return CommonResponse(
+            code=200,
+            message="Default address retrieved successfully",
+            message_id="DEFAULT_ADDRESS_GET_SUCCESS",
+            data=address
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting default address: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get default address"
         )
 
 # Session Management

@@ -46,26 +46,30 @@ class PasswordChangeRequest(BaseModel):
 
 class AddressCreateRequest(BaseModel):
     """Request schema for creating user address"""
-    title: str = Field(..., min_length=1, max_length=100)
-    address_line1: str = Field(..., min_length=1, max_length=255)
-    address_line2: Optional[str] = Field(None, max_length=255)
+    title: str = Field(..., min_length=1, max_length=100, description="Address title (e.g., Home, Office)")
+    full_name: str = Field(..., min_length=2, max_length=100, description="Full name of the person")
+    phone_number: str = Field(..., min_length=10, max_length=15, description="Phone number")
+    address_line1: str = Field(..., min_length=1, max_length=255, description="House number and street")
+    address_line2: Optional[str] = Field(None, max_length=255, description="Area/neighborhood")
     city: str = Field(..., min_length=1, max_length=100)
     state: str = Field(..., min_length=1, max_length=100)
-    postal_code: str = Field(..., min_length=1, max_length=20)
+    postal_code: str = Field(..., min_length=5, max_length=10, description="Postal/ZIP code")
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
     is_default: bool = False
     address_type: AddressType = AddressType.HOME
-    landmark: Optional[str] = Field(None, max_length=255)
+    landmark: Optional[str] = Field(None, max_length=255, description="Nearby landmark")
 
 class AddressUpdateRequest(BaseModel):
     """Request schema for updating user address"""
     title: Optional[str] = Field(None, min_length=1, max_length=100)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=15)
     address_line1: Optional[str] = Field(None, min_length=1, max_length=255)
     address_line2: Optional[str] = Field(None, max_length=255)
     city: Optional[str] = Field(None, min_length=1, max_length=100)
     state: Optional[str] = Field(None, min_length=1, max_length=100)
-    postal_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    postal_code: Optional[str] = Field(None, min_length=5, max_length=10)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
     is_default: Optional[bool] = None
@@ -85,7 +89,10 @@ class UserPreferencesRequest(BaseModel):
 class AddressResponse(BaseModel):
     """Response schema for user address"""
     address_id: UUID
+    user_id: UUID
     title: str
+    full_name: str
+    phone_number: str
     address_line1: str
     address_line2: Optional[str]
     city: str
@@ -97,9 +104,33 @@ class AddressResponse(BaseModel):
     address_type: AddressType
     landmark: Optional[str]
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+
+class AddressSearchRequest(BaseModel):
+    """Request schema for searching addresses"""
+    query: str = Field(..., min_length=1, max_length=100, description="Search query")
+    address_type: Optional[AddressType] = Field(None, description="Filter by address type")
+    limit: Optional[int] = Field(10, ge=1, le=50, description="Maximum number of results")
+
+class AddressSetDefaultRequest(BaseModel):
+    """Request schema for setting default address"""
+    address_id: UUID = Field(..., description="Address ID to set as default")
+
+class AddressValidationRequest(BaseModel):
+    """Request schema for validating address"""
+    postal_code: str = Field(..., min_length=5, max_length=10)
+    city: str = Field(..., min_length=1, max_length=100)
+    state: str = Field(..., min_length=1, max_length=100)
+
+class AddressValidationResponse(BaseModel):
+    """Response schema for address validation"""
+    is_valid: bool
+    is_deliverable: bool
+    delivery_areas: Optional[List[str]] = None
+    message: Optional[str] = None
 
 class UserResponse(BaseModel):
     """Response schema for user profile"""
