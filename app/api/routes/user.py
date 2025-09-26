@@ -18,7 +18,7 @@ from app.infra.db.postgres.models.address import Address
 from app.infra.db.postgres.models.user_session import UserSession
 from app.infra.db.postgres.models.order import Order
 from app.utils.auth_utils import AuthUtils
-from app.utils.enums import UserRole, UserStatus
+from app.utils.enums import UserRole, UserStatus, Gender
 from app.config.logger import get_logger
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -231,10 +231,32 @@ async def create_address(
             ).update({"is_default": False})
         
         # Create new address
-        address = Address(
-            user_id=current_user.user_id,
-            **address_data.dict()
-        )
+        address_data_dict = address_data.dict()
+        
+        # Handle potential database schema mismatch
+        # Only pass fields that exist in the database
+        address_fields = {
+            'user_id': current_user.user_id,
+            'title': address_data_dict.get('title'),
+            'address_line1': address_data_dict.get('address_line1'),
+            'address_line2': address_data_dict.get('address_line2'),
+            'city': address_data_dict.get('city'),
+            'state': address_data_dict.get('state'),
+            'postal_code': address_data_dict.get('postal_code'),
+            'latitude': address_data_dict.get('latitude'),
+            'longitude': address_data_dict.get('longitude'),
+            'is_default': address_data_dict.get('is_default', False),
+            'address_type': address_data_dict.get('address_type', 'home'),
+            'landmark': address_data_dict.get('landmark')
+        }
+        
+        # Only add new fields if they are provided and not None
+        if address_data_dict.get('full_name') is not None:
+            address_fields['full_name'] = address_data_dict.get('full_name')
+        if address_data_dict.get('phone_number') is not None:
+            address_fields['phone_number'] = address_data_dict.get('phone_number')
+        
+        address = Address(**address_fields)
         
         db.add(address)
         db.commit()
@@ -249,9 +271,13 @@ async def create_address(
     
     except Exception as e:
         logger.error(f"Error creating address: {str(e)}")
+        logger.error(f"Address data: {address_data_dict}")
+        logger.error(f"Address fields: {address_fields}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create address"
+            detail=f"Failed to create address: {str(e)}"
         )
 
 @router.get("/addresses", response_model=CommonResponse[List[AddressResponse]])

@@ -11,7 +11,7 @@ class Address(Base):
     __tablename__ = 'core_mstr_one_qlick_addresses_tbl'
 
     address_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl(user_id)', ondelete='CASCADE'))
+    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id', ondelete='CASCADE'))
     title = Column(String(100), nullable=False)  # Home, Office, etc.
     address_line1 = Column(String(255), nullable=False)
     address_line2 = Column(String(255))
@@ -21,7 +21,7 @@ class Address(Base):
     latitude = Column(DECIMAL(10, 8))
     longitude = Column(DECIMAL(11, 8))
     is_default = Column(Boolean, default=False)
-    address_type = Column(Enum(AddressType), default=AddressType.HOME)
+    address_type = Column(String(20), default='home')
     landmark = Column(String(255))
     full_name = Column(String(100), nullable=False, default='')
     phone_number = Column(String(20), nullable=False, default='')

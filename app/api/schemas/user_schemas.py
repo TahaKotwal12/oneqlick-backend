@@ -58,10 +58,10 @@ class AddressCreateRequest(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
     is_default: bool = False
-    address_type: AddressType = AddressType.HOME
+    address_type: str = "home"
     landmark: Optional[str] = Field(None, max_length=255)
-    full_name: str = Field(..., min_length=1, max_length=100)
-    phone_number: str = Field(..., min_length=10, max_length=20)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
     
     @validator('phone_number')
     def validate_phone_number(cls, v):
@@ -83,7 +83,7 @@ class AddressUpdateRequest(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
     is_default: Optional[bool] = None
-    address_type: Optional[AddressType] = None
+    address_type: Optional[str] = None
     landmark: Optional[str] = Field(None, max_length=255)
     full_name: Optional[str] = Field(None, min_length=1, max_length=100)
     phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
@@ -119,7 +119,7 @@ class AddressResponse(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     is_default: bool
-    address_type: AddressType
+    address_type: str
     landmark: Optional[str]
     full_name: str
     phone_number: str
