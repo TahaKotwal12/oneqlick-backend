@@ -37,7 +37,8 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 class ResetPasswordRequest(BaseModel):
-    token: str
+    otp_code: str = Field(..., min_length=4, max_length=10)
+    email: EmailStr
     new_password: str = Field(..., min_length=6, max_length=100)
 
 class LogoutRequest(BaseModel):
