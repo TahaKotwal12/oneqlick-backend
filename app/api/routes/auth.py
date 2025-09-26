@@ -716,7 +716,7 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
-            )
+            ) 
         
         # Create OTP record
         otp_record = OTPUtils.create_otp_record(
