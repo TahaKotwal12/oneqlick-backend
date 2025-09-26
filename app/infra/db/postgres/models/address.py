@@ -23,5 +23,8 @@ class Address(Base):
     is_default = Column(Boolean, default=False)
     address_type = Column(Enum(AddressType), default=AddressType.HOME)
     landmark = Column(String(255))
+    full_name = Column(String(100), nullable=False, default='')
+    phone_number = Column(String(20), nullable=False, default='')
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
   

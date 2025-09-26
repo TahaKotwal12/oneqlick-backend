@@ -4,6 +4,9 @@ from datetime import datetime, date
 from uuid import UUID
 from app.utils.enums import UserRole, UserStatus, Gender, AddressType
 
+# Constants
+PHONE_VALIDATION_MESSAGE = 'Phone number must be between 10 and 15 digits'
+
 # Request Schemas
 class UserUpdateRequest(BaseModel):
     """Request schema for updating user profile"""
@@ -24,7 +27,7 @@ class UserUpdateRequest(BaseModel):
             # Remove any non-digit characters for validation
             phone_digits = ''.join(filter(str.isdigit, v))
             if len(phone_digits) < 10 or len(phone_digits) > 15:
-                raise ValueError('Phone number must be between 10 and 15 digits')
+                raise ValueError(PHONE_VALIDATION_MESSAGE)
         return v
     
     @validator('gender')
@@ -57,6 +60,17 @@ class AddressCreateRequest(BaseModel):
     is_default: bool = False
     address_type: AddressType = AddressType.HOME
     landmark: Optional[str] = Field(None, max_length=255)
+    full_name: str = Field(..., min_length=1, max_length=100)
+    phone_number: str = Field(..., min_length=10, max_length=20)
+    
+    @validator('phone_number')
+    def validate_phone_number(cls, v):
+        if v is not None:
+            # Remove any non-digit characters for validation
+            phone_digits = ''.join(filter(str.isdigit, v))
+            if len(phone_digits) < 10 or len(phone_digits) > 15:
+                raise ValueError(PHONE_VALIDATION_MESSAGE)
+        return v
 
 class AddressUpdateRequest(BaseModel):
     """Request schema for updating user address"""
@@ -71,6 +85,17 @@ class AddressUpdateRequest(BaseModel):
     is_default: Optional[bool] = None
     address_type: Optional[AddressType] = None
     landmark: Optional[str] = Field(None, max_length=255)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=20)
+    
+    @validator('phone_number')
+    def validate_phone_number(cls, v):
+        if v is not None:
+            # Remove any non-digit characters for validation
+            phone_digits = ''.join(filter(str.isdigit, v))
+            if len(phone_digits) < 10 or len(phone_digits) > 15:
+                raise ValueError(PHONE_VALIDATION_MESSAGE)
+        return v
 
 class UserPreferencesRequest(BaseModel):
     """Request schema for updating user preferences"""
@@ -96,7 +121,10 @@ class AddressResponse(BaseModel):
     is_default: bool
     address_type: AddressType
     landmark: Optional[str]
+    full_name: str
+    phone_number: str
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
