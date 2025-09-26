@@ -148,6 +148,18 @@ async def signup(
             http_request.headers.get("user-agent")
         )
         
+        # Send welcome email
+        try:
+            from app.services.email_service import email_service
+            await email_service.send_welcome_email(
+                to_email=user.email,
+                user_name=f"{user.first_name} {user.last_name}".strip(),
+                first_name=user.first_name
+            )
+            logger.info(f"Welcome email sent to {user.email}")
+        except Exception as e:
+            logger.warning(f"Failed to send welcome email to {user.email}: {e}")
+        
         return CommonResponse(
             code=201,
             message="User registered successfully",
@@ -206,6 +218,18 @@ async def google_signin(
             user.email_verified = google_user_info.get("email_verified", False)
             db.commit()
             is_new_user = True
+            
+            # Send welcome email for new Google users
+            try:
+                from app.services.email_service import email_service
+                await email_service.send_welcome_email(
+                    to_email=user.email,
+                    user_name=f"{user.first_name} {user.last_name}".strip(),
+                    first_name=user.first_name
+                )
+                logger.info(f"Welcome email sent to new Google user {user.email}")
+            except Exception as e:
+                logger.warning(f"Failed to send welcome email to new Google user {user.email}: {e}")
         
         # Create or update OAuth provider record
         oauth_provider = db.query(OAuthProvider).filter(
