@@ -80,7 +80,7 @@ class LoginResponse(BaseModel):
 
 class SignupResponse(BaseModel):
     user: UserResponse
-    tokens: TokenResponse
+    tokens: Optional[TokenResponse] = None
     requires_verification: bool = True
 
 class GoogleSigninResponse(BaseModel):

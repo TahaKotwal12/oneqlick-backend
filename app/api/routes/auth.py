@@ -133,33 +133,37 @@ async def signup(
             role=UserRole.CUSTOMER.value
         )
         
-        # Generate tokens
-        access_token = AuthUtils.generate_jwt_token(str(user.user_id), user.role)
-        refresh_token_obj = AuthUtils.create_refresh_token(
-            db, str(user.user_id), get_device_info(http_request),
-            http_request.client.host if http_request.client else None,
-            http_request.headers.get("user-agent")
+        # Send OTP for email verification
+        from app.utils.otp_utils import OTPUtils
+        from app.services.email_service import email_service
+        
+        otp_record = OTPUtils.create_otp_record(
+            db=db,
+            user_id=str(user.user_id),
+            email=request.email,
+            otp_type="email_verification"
         )
         
-        # Create user session
-        AuthUtils.create_user_session(
-            db, str(user.user_id), get_device_info(http_request),
-            http_request.client.host if http_request.client else None,
-            http_request.headers.get("user-agent")
-        )
+        if otp_record:
+            # Send OTP email
+            try:
+                await email_service.send_otp_email(
+                    to_email=request.email,
+                    otp_code=otp_record.otp_code,
+                    user_name=f"{user.first_name} {user.last_name}".strip(),
+                    otp_type="email_verification"
+                )
+                logger.info(f"OTP sent to {request.email} for email verification")
+            except Exception as e:
+                logger.warning(f"Failed to send OTP email to {request.email}: {e}")
         
         return CommonResponse(
             code=201,
-            message="User registered successfully",
+            message="User registered successfully. Please check your email for verification.",
             message_id="SIGNUP_SUCCESS",
             data=SignupResponse(
                 user=user,
-                tokens={
-                    "access_token": access_token,
-                    "refresh_token": refresh_token_obj.token_hash,
-                    "token_type": "bearer",
-                    "expires_in": JWT_EXPIRATION_HOURS * 3600
-                },
+                tokens=None,  # No tokens for signup - user must verify email first
                 requires_verification=True
             )
         )
