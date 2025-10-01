@@ -1,0 +1,29 @@
+# .github/workflows/backup-main.yml
+name: Backup Main Branch
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"   # every 4 hours
+  workflow_dispatch:         # allow manual trigger too
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync main to main-backup
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          # Create or update backup branch
+          git branch -f main-backup main
+          git push origin main-backup --force
