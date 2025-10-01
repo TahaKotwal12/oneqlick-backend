@@ -1,12 +1,25 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
 # Request Schemas
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, min_length=10, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
+    
+    @model_validator(mode='after')
+    def validate_identifier(self):
+        email = self.email
+        phone = self.phone
+        
+        if not email and not phone:
+            raise ValueError('Either email or phone number must be provided')
+        if email and phone:
+            raise ValueError('Provide either email or phone number, not both')
+        
+        return self
 
 class SignupRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)

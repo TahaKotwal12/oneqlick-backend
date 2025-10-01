@@ -17,8 +17,8 @@ jobs:
 
       - name: Sync main to main-backup
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "TahaKotwal12"
+          git config user.email "taha.kotwal@adypu.edu.in"
 
           git fetch origin main
           git checkout main
