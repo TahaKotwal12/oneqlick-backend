@@ -35,21 +35,26 @@ async def login(
     http_request: Request,
     db: Session = Depends(get_db)
 ):
-    """User login with email and password"""
+    """User login with email/phone and password"""
     try:
-        # Get user by email
-        user = AuthUtils.get_user_by_email(db, request.email)
+        # Get user by email or phone
+        user = None
+        if request.email:
+            user = AuthUtils.get_user_by_email(db, request.email)
+        elif request.phone:
+            user = AuthUtils.get_user_by_phone(db, request.phone)
+        
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
+                detail="Invalid email/phone or password"
             )
         
         # Verify password
         if not AuthUtils.verify_password(request.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
+                detail="Invalid email/phone or password"
             )
         
         # Check if user is active
