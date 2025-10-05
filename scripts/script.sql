@@ -5,6 +5,7 @@
 -- User related enums
 CREATE TYPE user_role AS ENUM ('customer', 'admin', 'delivery_partner', 'restaurant_owner');
 CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
+CREATE TYPE gender_enum AS ENUM ('male', 'female', 'other');
 
 -- Restaurant related enums
 CREATE TYPE restaurant_status AS ENUM ('active', 'inactive', 'suspended');
@@ -339,6 +340,25 @@ CREATE TABLE core_mstr_one_qlick_password_reset_tokens_tbl (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Pending users table for unverified registrations
+CREATE TABLE core_mstr_one_qlick_pending_users_tbl (
+    pending_user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    role user_role NOT NULL,
+    profile_image VARCHAR(500),
+    date_of_birth DATE,
+    gender gender_enum,
+    verification_token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ====================================================================
 -- INDEXES FOR PERFORMANCE OPTIMIZATION
 -- ====================================================================
@@ -348,6 +368,12 @@ CREATE INDEX idx_one_qlick_users_email ON core_mstr_one_qlick_users_tbl(email);
 CREATE INDEX idx_one_qlick_users_phone ON core_mstr_one_qlick_users_tbl(phone);
 CREATE INDEX idx_one_qlick_users_role ON core_mstr_one_qlick_users_tbl(role);
 CREATE INDEX idx_one_qlick_users_status ON core_mstr_one_qlick_users_tbl(status);
+
+-- Pending users table indexes
+CREATE INDEX idx_one_qlick_pending_users_email ON core_mstr_one_qlick_pending_users_tbl(email);
+CREATE INDEX idx_one_qlick_pending_users_phone ON core_mstr_one_qlick_pending_users_tbl(phone);
+CREATE INDEX idx_one_qlick_pending_users_token ON core_mstr_one_qlick_pending_users_tbl(verification_token);
+CREATE INDEX idx_one_qlick_pending_users_expires ON core_mstr_one_qlick_pending_users_tbl(expires_at);
 
 -- Address table indexes
 CREATE INDEX idx_one_qlick_addresses_user_id ON core_mstr_one_qlick_addresses_tbl(user_id);

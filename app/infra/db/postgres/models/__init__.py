@@ -20,6 +20,7 @@ from .oauth_provider import OAuthProvider
 from .otp_verification import OTPVerification
 from .user_session import UserSession
 from .password_reset_token import PasswordResetToken
+from .pending_user import PendingUser
 
 # Additional models
 from .cart import Cart
@@ -49,6 +50,7 @@ __all__ = [
     'OTPVerification',
     'UserSession',
     'PasswordResetToken',
+    'PendingUser',
     
     # Additional models
     'Cart',
