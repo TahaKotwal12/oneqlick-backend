@@ -37,7 +37,7 @@ REDIS_CONFIG = {
 
 # Application Configuration
 APP_ENV = os.getenv("APP_ENV", "development")
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "oneqlick-secret-key-2024-production-ready")
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "debug").upper()
 
@@ -47,7 +47,7 @@ CORS_METHODS = os.getenv("CORS_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(",
 CORS_HEADERS = os.getenv("CORS_HEADERS", "*").split(",")
 
 # JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-jwt-secret-key")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "oneqlick-jwt-secret-key-2024-production-ready")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
