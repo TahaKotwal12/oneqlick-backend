@@ -10,7 +10,7 @@ from app.api.schemas.auth_schemas import (
     GoogleSigninRequest, GoogleSigninResponse, RefreshTokenRequest, RefreshTokenResponse,
     SendOTPRequest, SendOTPResponse, VerifyOTPRequest, VerifyOTPResponse,
     ForgotPasswordRequest, ResetPasswordRequest, LogoutRequest, LogoutResponse,
-    UserSessionsResponse, UserSessionResponse
+    UserSessionsResponse, UserSessionResponse, PendingUserResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.api.dependencies import get_current_user, get_device_info
@@ -206,26 +206,12 @@ async def signup(
                     detail="Failed to send verification email. Please try again."
                 )
         
-        # Create a temporary user object for response (not saved to DB)
-        temp_user = User(
-            user_id=pending_user.pending_user_id,
-            first_name=pending_user.first_name,
-            last_name=pending_user.last_name,
-            email=pending_user.email,
-            phone=pending_user.phone,
-            password_hash="",  # Don't return password hash
-            role=pending_user.role,
-            status="pending",  # Special status for pending users
-            email_verified=False,
-            phone_verified=False
-        )
-        
         return CommonResponse(
             code=201,
             message="Registration initiated successfully. Please check your email for verification to complete your account setup.",
             message_id="SIGNUP_SUCCESS",
             data=SignupResponse(
-                user=temp_user,
+                user=pending_user,  # Return the pending user directly
                 tokens=None,  # No tokens for signup - user must verify email first
                 requires_verification=True
             )
