@@ -79,7 +79,14 @@ class PendingUserUtils:
     @staticmethod
     def is_token_expired(pending_user: PendingUser) -> bool:
         """Check if verification token is expired."""
-        return datetime.now(timezone.utc) > pending_user.expires_at
+        now = datetime.now(timezone.utc)
+        expires_at = pending_user.expires_at
+        
+        # Ensure expires_at is timezone-aware
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        return now > expires_at
     
     @staticmethod
     def verify_pending_user(db: Session, verification_token: str) -> Optional[User]:

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer
-from sqlalchemy.dialects.postgresql import UUID, ENUM
+from sqlalchemy.dialects.postgresql import UUID, ENUM, TIMESTAMPTZ
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -21,7 +21,7 @@ class PendingUser(Base):
     date_of_birth = Column(Date)
     gender = Column(Enum(Gender))
     verification_token = Column(String(255), unique=True, nullable=False)  # For email verification
-    expires_at = Column(TIMESTAMP, nullable=False)  # Token expiration
+    expires_at = Column(TIMESTAMPTZ, nullable=False)  # Token expiration
     is_verified = Column(Boolean, default=False)
-    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
-    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_at = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMPTZ, server_default=func.now(), onupdate=func.now(), nullable=False)

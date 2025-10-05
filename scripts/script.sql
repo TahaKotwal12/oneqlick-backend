@@ -309,11 +309,11 @@ CREATE TABLE core_mstr_one_qlick_otp_verifications_tbl (
     email VARCHAR(255),
     otp_code VARCHAR(10) NOT NULL,
     otp_type VARCHAR(20) NOT NULL, -- 'phone_verification', 'email_verification', 'password_reset'
-    expires_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
     is_verified BOOLEAN DEFAULT FALSE,
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 3,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User sessions table for tracking active sessions
@@ -354,10 +354,10 @@ CREATE TABLE core_mstr_one_qlick_pending_users_tbl (
     date_of_birth DATE,
     gender gender_enum,
     verification_token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
     is_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ====================================================================

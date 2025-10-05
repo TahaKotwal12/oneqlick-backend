@@ -34,9 +34,16 @@ class OTPUtils:
     def is_otp_expired(expires_at: datetime) -> bool:
         """Check if OTP is expired"""
         now = datetime.now(timezone.utc)
+        
         # Ensure expires_at is timezone-aware
         if expires_at.tzinfo is None:
+            # If timezone-naive, assume it's UTC
             expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        # Ensure both datetimes are timezone-aware for comparison
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        
         return now > expires_at
     
     @staticmethod
