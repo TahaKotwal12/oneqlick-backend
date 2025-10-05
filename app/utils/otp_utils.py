@@ -45,7 +45,8 @@ class OTPUtils:
         user_id: str,
         email: Optional[str] = None,
         phone: Optional[str] = None,
-        otp_type: str = "email_verification"
+        otp_type: str = "email_verification",
+        is_pending_user: bool = False
     ) -> Optional[OTPVerification]:
         """Create a new OTP record"""
         try:
@@ -56,24 +57,37 @@ class OTPUtils:
             otp_code = OTPUtils.generate_otp()
             expires_at = OTPUtils.get_otp_expiry()
             
-            # Create OTP record
-            otp_record = OTPVerification(
-                user_id=user_id,
-                email=email,
-                phone=phone,
-                otp_code=otp_code,
-                otp_type=otp_type,
-                expires_at=expires_at,
-                is_verified=False,
-                attempts=0,
-                max_attempts=OTPUtils.MAX_ATTEMPTS
-            )
+            # Create OTP record with appropriate user reference
+            if is_pending_user:
+                otp_record = OTPVerification(
+                    pending_user_id=user_id,  # Use pending_user_id for pending users
+                    email=email,
+                    phone=phone,
+                    otp_code=otp_code,
+                    otp_type=otp_type,
+                    expires_at=expires_at,
+                    is_verified=False,
+                    attempts=0,
+                    max_attempts=OTPUtils.MAX_ATTEMPTS
+                )
+            else:
+                otp_record = OTPVerification(
+                    user_id=user_id,  # Use user_id for regular users
+                    email=email,
+                    phone=phone,
+                    otp_code=otp_code,
+                    otp_type=otp_type,
+                    expires_at=expires_at,
+                    is_verified=False,
+                    attempts=0,
+                    max_attempts=OTPUtils.MAX_ATTEMPTS
+                )
             
             db.add(otp_record)
             db.commit()
             db.refresh(otp_record)
             
-            logger.info(f"OTP record created for user {user_id}, type: {otp_type}")
+            logger.info(f"OTP record created for {'pending' if is_pending_user else 'regular'} user {user_id}, type: {otp_type}")
             return otp_record
             
         except Exception as e:
@@ -87,16 +101,24 @@ class OTPUtils:
         user_id: str,
         otp_type: str,
         email: Optional[str] = None,
-        phone: Optional[str] = None
+        phone: Optional[str] = None,
+        is_pending_user: bool = False
     ) -> None:
         """Invalidate existing OTPs for the same user and type"""
         try:
-            # Build query conditions
-            conditions = [
-                OTPVerification.user_id == user_id,
-                OTPVerification.otp_type == otp_type,
-                OTPVerification.is_verified == False
-            ]
+            # Build query conditions based on user type
+            if is_pending_user:
+                conditions = [
+                    OTPVerification.pending_user_id == user_id,
+                    OTPVerification.otp_type == otp_type,
+                    OTPVerification.is_verified == False
+                ]
+            else:
+                conditions = [
+                    OTPVerification.user_id == user_id,
+                    OTPVerification.otp_type == otp_type,
+                    OTPVerification.is_verified == False
+                ]
             
             # Add email/phone conditions if provided
             if email:
@@ -172,12 +194,17 @@ class OTPUtils:
             otp_record.attempts += 1
             db.commit()
             
-            logger.info(f"OTP verified successfully for user {otp_record.user_id}")
+            # Determine which user_id to return
+            actual_user_id = otp_record.user_id if otp_record.user_id else otp_record.pending_user_id
+            is_pending = otp_record.pending_user_id is not None
+            
+            logger.info(f"OTP verified successfully for {'pending' if is_pending else 'regular'} user {actual_user_id}")
             
             return {
                 "success": True,
                 "message": "OTP verified successfully",
-                "user_id": str(otp_record.user_id),
+                "user_id": str(actual_user_id),
+                "is_pending_user": is_pending,
                 "otp_record": otp_record
             }
             

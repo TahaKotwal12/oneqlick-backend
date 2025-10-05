@@ -304,6 +304,7 @@ CREATE TABLE core_mstr_one_qlick_oauth_providers_tbl (
 CREATE TABLE core_mstr_one_qlick_otp_verifications_tbl (
     otp_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES core_mstr_one_qlick_users_tbl(user_id) ON DELETE CASCADE,
+    pending_user_id UUID REFERENCES core_mstr_one_qlick_pending_users_tbl(pending_user_id) ON DELETE CASCADE,
     phone VARCHAR(20),
     email VARCHAR(255),
     otp_code VARCHAR(10) NOT NULL,
@@ -442,6 +443,7 @@ CREATE INDEX idx_one_qlick_oauth_providers_provider ON core_mstr_one_qlick_oauth
 CREATE INDEX idx_one_qlick_oauth_providers_provider_user_id ON core_mstr_one_qlick_oauth_providers_tbl(provider, provider_user_id);
 
 CREATE INDEX idx_one_qlick_otp_verifications_user_id ON core_mstr_one_qlick_otp_verifications_tbl(user_id);
+CREATE INDEX idx_one_qlick_otp_verifications_pending_user_id ON core_mstr_one_qlick_otp_verifications_tbl(pending_user_id);
 CREATE INDEX idx_one_qlick_otp_verifications_phone ON core_mstr_one_qlick_otp_verifications_tbl(phone);
 CREATE INDEX idx_one_qlick_otp_verifications_email ON core_mstr_one_qlick_otp_verifications_tbl(email);
 CREATE INDEX idx_one_qlick_otp_verifications_expires_at ON core_mstr_one_qlick_otp_verifications_tbl(expires_at);

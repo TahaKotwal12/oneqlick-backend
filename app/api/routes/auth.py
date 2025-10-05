@@ -183,7 +183,8 @@ async def signup(
             db=db,
             user_id=str(pending_user.pending_user_id),  # Use pending user ID
             email=request.email,
-            otp_type="email_verification"
+            otp_type="email_verification",
+            is_pending_user=True  # Mark as pending user
         )
         
         if otp_record:
@@ -874,21 +875,22 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         
         # Update user verification status based on OTP type
         user_id = result["user_id"]
+        is_pending_user = result.get("is_pending_user", False)
         
         if request.otp_type == "email_verification":
             from app.utils.pending_user_utils import PendingUserUtils
             
-            # For email verification, user_id is actually the pending user ID
             # Check if this is a pending user (signup verification)
-            pending_user = db.query(PendingUser).filter(PendingUser.pending_user_id == user_id).first()
-            if pending_user:
-                # Move pending user to main users table using verification token
-                user = PendingUserUtils.verify_pending_user(db, pending_user.verification_token)
-                if not user:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Verification token expired or invalid"
-                    )
+            if is_pending_user:
+                pending_user = db.query(PendingUser).filter(PendingUser.pending_user_id == user_id).first()
+                if pending_user:
+                    # Move pending user to main users table using verification token
+                    user = PendingUserUtils.verify_pending_user(db, pending_user.verification_token)
+                    if not user:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Verification token expired or invalid"
+                        )
                 
                 # Send welcome email after successful email verification
                 try:

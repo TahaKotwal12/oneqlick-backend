@@ -10,7 +10,8 @@ class OTPVerification(Base):
     __tablename__ = 'core_mstr_one_qlick_otp_verifications_tbl'
 
     otp_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id', ondelete='CASCADE'))
+    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id', ondelete='CASCADE'), nullable=True)
+    pending_user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_pending_users_tbl.pending_user_id', ondelete='CASCADE'), nullable=True)
     phone = Column(String(20))
     email = Column(String(255))
     otp_code = Column(String(10), nullable=False)
