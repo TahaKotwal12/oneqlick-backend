@@ -18,6 +18,7 @@ from app.utils.auth_utils import AuthUtils
 from app.infra.db.postgres.models.user import User
 from app.infra.db.postgres.models.refresh_token import RefreshToken
 from app.infra.db.postgres.models.oauth_provider import OAuthProvider
+from app.infra.db.postgres.models.pending_user import PendingUser
 from app.infra.db.postgres.models.user_session import UserSession
 from app.utils.enums import UserRole, UserStatus
 from app.config.config import JWT_EXPIRATION_HOURS
@@ -877,11 +878,12 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         if request.otp_type == "email_verification":
             from app.utils.pending_user_utils import PendingUserUtils
             
+            # For email verification, user_id is actually the pending user ID
             # Check if this is a pending user (signup verification)
-            pending_user = PendingUserUtils.get_pending_user_by_token(db, user_id)
+            pending_user = db.query(PendingUser).filter(PendingUser.pending_user_id == user_id).first()
             if pending_user:
-                # Move pending user to main users table
-                user = PendingUserUtils.verify_pending_user(db, user_id)
+                # Move pending user to main users table using verification token
+                user = PendingUserUtils.verify_pending_user(db, pending_user.verification_token)
                 if not user:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,

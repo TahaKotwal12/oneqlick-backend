@@ -9,7 +9,7 @@ from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
 from app.api.routes import auth, user
 # Import models to ensure they are registered with SQLAlchemy
-from app.infra.db.postgres.models import user as user_model, address, otp_verification
+from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user
 import logging
 
 APP_TITLE = "OneQlick Backend - Clean Startup"
