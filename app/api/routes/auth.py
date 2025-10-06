@@ -759,26 +759,52 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 detail="Either email or phone must be provided"
             )
         
-        # Get user by email or p hone
+        # Get user by email or phone (check both main users and pending users)
         user = None
-        if request.email:
-            user = AuthUtils.get_user_by_email(db, request.email)
-        elif request.phone:
-            user = AuthUtils.get_user_by_phone(db, request.phone)
+        pending_user = None
+        is_pending_user = False
         
-        if not user:
+        if request.email:
+            # First check main users table
+            user = AuthUtils.get_user_by_email(db, request.email)
+            if not user:
+                # If not found in main users, check pending users
+                from app.utils.pending_user_utils import PendingUserUtils
+                pending_user = PendingUserUtils.get_pending_user_by_email(db, request.email)
+                if pending_user:
+                    is_pending_user = True
+        elif request.phone:
+            # First check main users table
+            user = AuthUtils.get_user_by_phone(db, request.phone)
+            if not user:
+                # If not found in main users, check pending users
+                from app.utils.pending_user_utils import PendingUserUtils
+                pending_user = PendingUserUtils.get_pending_user_by_phone(db, request.phone)
+                if pending_user:
+                    is_pending_user = True
+        
+        if not user and not pending_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             ) 
         
+        # Determine which user to use for OTP creation
+        if is_pending_user:
+            user_id = str(pending_user.pending_user_id)
+            user_name = f"{pending_user.first_name} {pending_user.last_name}".strip()
+        else:
+            user_id = str(user.user_id)
+            user_name = f"{user.first_name} {user.last_name}".strip()
+        
         # Create OTP record
         otp_record = OTPUtils.create_otp_record(
             db=db,
-            user_id=str(user.user_id),
+            user_id=user_id,
             email=request.email,
             phone=request.phone,
-            otp_type=request.otp_type
+            otp_type=request.otp_type,
+            is_pending_user=is_pending_user
         )
         
         if not otp_record:
@@ -792,7 +818,7 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
             email_sent = await email_service.send_otp_email(
                 to_email=request.email,
                 otp_code=otp_record.otp_code,
-                user_name=f"{user.first_name} {user.last_name}".strip(),
+                user_name=user_name,  # Use the determined user name
                 otp_type=request.otp_type
             )
             
