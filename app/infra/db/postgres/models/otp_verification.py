@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, Integer
-from sqlalchemy.dialects.postgresql import UUID, TIMESTAMPTZ
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -16,8 +16,8 @@ class OTPVerification(Base):
     email = Column(String(255))
     otp_code = Column(String(10), nullable=False)
     otp_type = Column(String(20), nullable=False)  # 'phone_verification', 'email_verification', 'password_reset'
-    expires_at = Column(TIMESTAMPTZ, nullable=False)
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
     is_verified = Column(Boolean, default=False)
     attempts = Column(Integer, default=0)
     max_attempts = Column(Integer, default=3)
-    created_at = Column(TIMESTAMPTZ, server_default=func.now(), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
