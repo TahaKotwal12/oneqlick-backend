@@ -58,11 +58,13 @@ class OTPUtils:
         """Create a new OTP record"""
         try:
             # Invalidate any existing OTPs for this user and type
-            OTPUtils.invalidate_existing_otps(db, user_id, otp_type, email, phone)
+            OTPUtils.invalidate_existing_otps(db, user_id, otp_type, email, phone, is_pending_user)
             
             # Generate new OTP
             otp_code = OTPUtils.generate_otp()
             expires_at = OTPUtils.get_otp_expiry()
+            
+            logger.info(f"Creating new OTP {otp_code} for user {user_id}, type: {otp_type}, is_pending: {is_pending_user}")
             
             # Create OTP record with appropriate user reference
             if is_pending_user:
@@ -136,7 +138,10 @@ class OTPUtils:
             # Find and invalidate existing OTPs
             existing_otps = db.query(OTPVerification).filter(and_(*conditions)).all()
             
+            logger.info(f"Found {len(existing_otps)} existing OTPs to invalidate for user {user_id}, type: {otp_type}, is_pending: {is_pending_user}")
+            
             for otp in existing_otps:
+                logger.info(f"Invalidating OTP {otp.otp_id} with code {otp.otp_code}")
                 otp.is_verified = True  # Mark as used/invalid
                 otp.attempts = otp.max_attempts  # Mark as exhausted
             
