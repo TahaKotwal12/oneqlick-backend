@@ -58,7 +58,7 @@ class OTPUtils:
         """Create a new OTP record"""
         try:
             # Invalidate any existing OTPs for this user and type
-            OTPUtils.invalidate_existing_otps(db, user_id, otp_type, email, phone, is_pending_user)
+            OTPUtils.invalidate_existing_otps(db, user_id, otp_type, email, phone)
             
             # Generate new OTP
             otp_code = OTPUtils.generate_otp()
