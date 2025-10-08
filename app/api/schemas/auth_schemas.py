@@ -79,6 +79,23 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PendingUserResponse(BaseModel):
+    pending_user_id: UUID
+    email: str
+    phone: str
+    first_name: str
+    last_name: str
+    role: str
+    profile_image: Optional[str] = None
+    date_of_birth: Optional[datetime] = None
+    gender: Optional[str] = None
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
@@ -92,7 +109,7 @@ class LoginResponse(BaseModel):
     requires_verification: bool = False
 
 class SignupResponse(BaseModel):
-    user: UserResponse
+    user: PendingUserResponse
     tokens: Optional[TokenResponse] = None
     requires_verification: bool = True
 

@@ -3,16 +3,23 @@ name = "oneqlick-backend"
 version = "0.1.0"
 description = "OneQlick Food Delivery Backend API"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115.8",
-    "psycopg[binary]>=3.2.5",
-    "python-dateutil>=2.8.2",
-    "python-dotenv>=1.0.1",
-    "pytz>=2023.3",
-    "sqlalchemy>=2.0.38",
-    "uvicorn>=0.34.0",
-    "httpx>=0.28.1",
-    "redis>=5.0.0",
-    "bcrypt>=4.0.0"
+    "fastapi==0.115.12",
+    "psycopg2-binary==2.9.9",
+    "python-dotenv==1.0.1",
+    "sqlalchemy==2.0.38",
+    "uvicorn==0.34.0",
+    "redis==5.0.0",
+    "pydantic>=2.0.2,<3.0.0",
+    "pydantic[email]>=2.0.2,<3.0.0",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "httpx==0.28.1",
+    "fastapi-mail==1.5.0",
+    "jinja2==3.1.2",
+    "bcrypt==4.3.0",
+    "cryptography==42.0.0",
+    "python-dateutil==2.8.2",
+    "pytz==2023.3"
 ]
