@@ -1,6 +1,5 @@
 import logging
 from typing import Optional, Dict, Any
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from app.config.config import EMAIL_CONFIG
 import smtplib
 from email.mime.text import MIMEText
@@ -11,35 +10,18 @@ import os
 logger = logging.getLogger(__name__)
 
 class EmailService:
-    """Email service for sending OTP and other emails"""
+    """Email service for sending OTP and other emails using SMTP"""
     
     def __init__(self):
         self.config = EMAIL_CONFIG
-        self.fastmail = None
-        self._setup_fastmail()
+        self._validate_smtp_config()
     
-    def _setup_fastmail(self):
-        """Setup FastMail configuration"""
-        try:
-            if self.config.get("smtp_host") and self.config.get("smtp_username"):
-                conf = ConnectionConfig(
-                    MAIL_USERNAME=self.config["smtp_username"],
-                    MAIL_PASSWORD=self.config["smtp_password"],
-                    MAIL_FROM=self.config["smtp_username"],
-                    MAIL_PORT=self.config["smtp_port"],
-                    MAIL_SERVER=self.config["smtp_host"],
-                    MAIL_STARTTLS=self.config["smtp_use_tls"],
-                    MAIL_SSL_TLS=False,
-                    USE_CREDENTIALS=True,
-                    VALIDATE_CERTS=True
-                )
-                self.fastmail = FastMail(conf)
-                logger.info("FastMail configured successfully")
-            else:
-                logger.warning("Email configuration incomplete, using fallback method")
-        except Exception as e:
-            logger.error(f"Failed to setup FastMail: {e}")
-            self.fastmail = None
+    def _validate_smtp_config(self):
+        """Validate SMTP configuration"""
+        if self.config.get("smtp_host") and self.config.get("smtp_username"):
+            logger.info("SMTP configuration loaded successfully")
+        else:
+            logger.warning("SMTP configuration incomplete - emails will be logged instead")
     
     async def send_otp_email(
         self, 
@@ -55,12 +37,8 @@ class EmailService:
                 otp_code, user_name, otp_type
             )
             
-            # Try FastMail first
-            if self.fastmail:
-                return await self._send_with_fastmail(to_email, subject, html_content)
-            else:
-                # Fallback to SMTP
-                return self._send_with_smtp(to_email, subject, text_content)
+            # Use SMTP directly
+            return self._send_with_smtp(to_email, subject, html_content)
                 
         except Exception as e:
             logger.error(f"Failed to send OTP email: {e}")
@@ -196,35 +174,13 @@ class EmailService:
         
         return subject, html_content, text_content
     
-    async def _send_with_fastmail(
-        self, 
-        to_email: str, 
-        subject: str, 
-        html_content: str
-    ) -> bool:
-        """Send email using FastMail"""
-        try:
-            message = MessageSchema(
-                subject=subject,
-                recipients=[to_email],
-                body=html_content,
-                subtype="html"
-            )
-            await self.fastmail.send_message(message)
-            logger.info(f"OTP email sent successfully to {to_email}")
-            return True
-        except Exception as e:
-            logger.error(f"FastMail send failed: {e}")
-            # Fallback to SMTP if FastMail fails
-            return self._send_with_smtp(to_email, subject, html_content)
-    
     def _send_with_smtp(
         self, 
         to_email: str, 
         subject: str, 
         html_content: str
     ) -> bool:
-        """Send email using SMTP fallback"""
+        """Send email using SMTP"""
         try:
             # Check if SMTP is configured
             if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
@@ -283,12 +239,8 @@ class EmailService:
                 user_name, first_name
             )
             
-            # Try FastMail first
-            if self.fastmail:
-                return await self._send_welcome_with_fastmail(to_email, subject, html_content)
-            else:
-                # Fallback to SMTP
-                return self._send_welcome_with_smtp(to_email, subject, text_content)
+            # Use SMTP directly
+            return self._send_welcome_with_smtp(to_email, subject, html_content)
                 
         except Exception as e:
             logger.error(f"Failed to send welcome email: {e}")
@@ -434,35 +386,13 @@ class EmailService:
         
         return subject, html_content, text_content
     
-    async def _send_welcome_with_fastmail(
-        self, 
-        to_email: str, 
-        subject: str, 
-        html_content: str
-    ) -> bool:
-        """Send welcome email using FastMail"""
-        try:
-            message = MessageSchema(
-                subject=subject,
-                recipients=[to_email],
-                body=html_content,
-                subtype="html"
-            )
-            await self.fastmail.send_message(message)
-            logger.info(f"Welcome email sent successfully to {to_email}")
-            return True
-        except Exception as e:
-            logger.error(f"FastMail welcome email send failed: {e}")
-            # Fallback to SMTP if FastMail fails
-            return self._send_welcome_with_smtp(to_email, subject, html_content)
-    
     def _send_welcome_with_smtp(
         self, 
         to_email: str, 
         subject: str, 
         html_content: str
     ) -> bool:
-        """Send welcome email using SMTP fallback"""
+        """Send welcome email using SMTP"""
         try:
             # Check if SMTP is configured
             if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
