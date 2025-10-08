@@ -10,6 +10,8 @@ from app.infra.redis.repositories.redis_repositories import RedisRepository
 from app.api.routes import auth, user
 # Import models to ensure they are registered with SQLAlchemy
 from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user
+# Import batch cleanup worker
+from app.workers.batch_cleanup_worker import start_batch_cleanup_worker, stop_batch_cleanup_worker, get_worker_status
 import logging
 
 APP_TITLE = "OneQlick Backend - Clean Startup"
@@ -29,9 +31,44 @@ except Exception as e:
     logger.warning(f"Redis connection failed: {e}")
     redis_repo = None
 
+# Startup event - Initialize batch cleanup service
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on application startup."""
+    logger = get_logger(__name__)
+    try:
+        # Start batch cleanup worker
+        start_batch_cleanup_worker()
+        logger.info("Batch cleanup service started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start batch cleanup service: {e}")
+
+# Shutdown event - Clean up services
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up services on application shutdown."""
+    logger = get_logger(__name__)
+    try:
+        # Stop batch cleanup worker
+        stop_batch_cleanup_worker()
+        logger.info("Batch cleanup service stopped successfully")
+    except Exception as e:
+        logger.error(f"Error stopping batch cleanup service: {e}")
+
 @app.get("/")
 async def root():
-    return {"message": APP_TITLE, "status": "running"}
+    return {
+        "message": APP_TITLE, 
+        "status": "running",
+        "port": 8001,
+        "batch_cleanup": "enabled",
+        "endpoints": {
+            "health": "/health",
+            "api_docs": "/docs",
+            "batch_cleanup_status": "/api/v1/batch-cleanup/status",
+            "batch_cleanup_run": "/api/v1/batch-cleanup/run"
+        }
+    }
 
 @app.get("/health")
 async def health_check():
@@ -40,7 +77,8 @@ async def health_check():
         "status": "healthy",
         "service": APP_TITLE,
         "database": "unknown",
-        "redis": "unknown"
+        "redis": "unknown",
+        "batch_cleanup": "unknown"
     }
     
     # Check database connection
@@ -64,7 +102,59 @@ async def health_check():
     except Exception as e:
         health_status["redis"] = f"error: {str(e)}"
     
+    # Check batch cleanup service
+    try:
+        cleanup_status = get_worker_status()
+        if cleanup_status["worker_running"] and cleanup_status["cleanup_service_status"]["running"]:
+            health_status["batch_cleanup"] = "running"
+        else:
+            health_status["batch_cleanup"] = "stopped"
+    except Exception as e:
+        health_status["batch_cleanup"] = f"error: {str(e)}"
+    
     return health_status
+
+@app.get("/api/v1/batch-cleanup/status")
+async def batch_cleanup_status():
+    """Get the status of the batch cleanup service."""
+    try:
+        status = get_worker_status()
+        return {
+            "status": "success",
+            "data": {
+                "worker_running": status["worker_running"],
+                "cleanup_service": status["cleanup_service_status"],
+                "message": "Batch cleanup service status retrieved successfully"
+            }
+        }
+    except Exception as e:
+        logger = get_logger(__name__)
+        logger.error(f"Error getting batch cleanup status: {e}")
+        return {
+            "status": "error",
+            "message": f"Failed to get batch cleanup status: {str(e)}"
+        }
+
+@app.post("/api/v1/batch-cleanup/run")
+async def run_batch_cleanup():
+    """Manually trigger batch cleanup."""
+    try:
+        from app.services.batch_cleanup_service import run_cleanup_now
+        deleted_count = run_cleanup_now()
+        return {
+            "status": "success",
+            "data": {
+                "deleted_count": deleted_count,
+                "message": f"Batch cleanup completed. Deleted {deleted_count} records."
+            }
+        }
+    except Exception as e:
+        logger = get_logger(__name__)
+        logger.error(f"Error running batch cleanup: {e}")
+        return {
+            "status": "error",
+            "message": f"Failed to run batch cleanup: {str(e)}"
+        }
 
 @app.exception_handler(EngageFatalException)
 async def fatal_exception_handler(request, exc: EngageFatalException):
