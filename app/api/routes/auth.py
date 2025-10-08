@@ -179,6 +179,8 @@ async def signup(
         from app.utils.otp_utils import OTPUtils
         from app.services.email_service import email_service
         
+        logger.info(f"Creating OTP for pending user {pending_user.pending_user_id}, email: {request.email}")
+        
         otp_record = OTPUtils.create_otp_record(
             db=db,
             user_id=str(pending_user.pending_user_id),  # Use pending user ID
@@ -187,24 +189,45 @@ async def signup(
             is_pending_user=True  # Mark as pending user
         )
         
-        if otp_record:
-            # Send OTP email
-            try:
-                await email_service.send_otp_email(
-                    to_email=request.email,
-                    otp_code=otp_record.otp_code,
-                    user_name=f"{pending_user.first_name} {pending_user.last_name}".strip(),
-                    otp_type="email_verification"
-                )
-                logger.info(f"OTP sent to {request.email} for email verification")
-            except Exception as e:
-                logger.warning(f"Failed to send OTP email to {request.email}: {e}")
+        if not otp_record:
+            logger.error(f"Failed to create OTP record for pending user {pending_user.pending_user_id}")
+            # Clean up pending user if OTP creation fails
+            PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate verification code. Please try again."
+            )
+        
+        logger.info(f"OTP record created successfully: {otp_record.otp_code}")
+        
+        # Send OTP email
+        try:
+            logger.info(f"Attempting to send OTP email to {request.email}")
+            email_sent = await email_service.send_otp_email(
+                to_email=request.email,
+                otp_code=otp_record.otp_code,
+                user_name=f"{pending_user.first_name} {pending_user.last_name}".strip(),
+                otp_type="email_verification"
+            )
+            
+            if email_sent:
+                logger.info(f"OTP sent successfully to {request.email} for email verification")
+            else:
+                logger.error(f"Email service returned False for {request.email}")
                 # Clean up pending user if email sending fails
                 PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to send verification email. Please try again."
                 )
+        except Exception as e:
+            logger.error(f"Failed to send OTP email to {request.email}: {e}")
+            # Clean up pending user if email sending fails
+            PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send verification email. Please try again."
+            )
         
         return CommonResponse(
             code=201,
@@ -798,6 +821,8 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
             user_name = f"{user.first_name} {user.last_name}".strip()
         
         # Create OTP record
+        logger.info(f"Creating OTP for {'pending' if is_pending_user else 'regular'} user {user_id}, email: {request.email}, type: {request.otp_type}")
+        
         otp_record = OTPUtils.create_otp_record(
             db=db,
             user_id=user_id,
@@ -808,13 +833,17 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
         )
         
         if not otp_record:
+            logger.error(f"Failed to create OTP record for user {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to generate OTP"
             )
         
+        logger.info(f"OTP record created successfully: {otp_record.otp_code}")
+        
         # Send OTP based on type
         if request.email and request.otp_type in ["email_verification", "password_reset"]:
+            logger.info(f"Attempting to send OTP email to {request.email}")
             email_sent = await email_service.send_otp_email(
                 to_email=request.email,
                 otp_code=otp_record.otp_code,
@@ -822,7 +851,10 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 otp_type=request.otp_type
             )
             
-            if not email_sent:
+            if email_sent:
+                logger.info(f"OTP email sent successfully to {request.email}")
+            else:
+                logger.error(f"Email service returned False for {request.email}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to send OTP email"
