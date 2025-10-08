@@ -222,7 +222,7 @@ class EmailService:
         self, 
         to_email: str, 
         subject: str, 
-        text_content: str
+        html_content: str
     ) -> bool:
         """Send email using SMTP fallback"""
         try:
@@ -232,7 +232,7 @@ class EmailService:
                 logger.info("=== OTP EMAIL (SMTP Not Configured) ===")
                 logger.info(f"To: {to_email}")
                 logger.info(f"Subject: {subject}")
-                logger.info(f"Content: {text_content}")
+                logger.info(f"Content: {html_content}")
                 logger.info("=====================================")
                 return True
             
@@ -242,9 +242,9 @@ class EmailService:
             msg['From'] = self.config["smtp_username"]
             msg['To'] = to_email
             
-            # Add text content
-            text_part = MIMEText(text_content, 'plain', 'utf-8')
-            msg.attach(text_part)
+            # Add HTML content
+            html_part = MIMEText(html_content, 'html', 'utf-8')
+            msg.attach(html_part)
             
             # Connect to SMTP server and send
             if self.config["smtp_use_tls"]:
@@ -266,7 +266,7 @@ class EmailService:
             logger.info("=== OTP EMAIL (SMTP Failed - Debug Info) ===")
             logger.info(f"To: {to_email}")
             logger.info(f"Subject: {subject}")
-            logger.info(f"Content: {text_content}")
+            logger.info(f"Content: {html_content}")
             logger.info("=====================================")
             return False
     
@@ -460,7 +460,7 @@ class EmailService:
         self, 
         to_email: str, 
         subject: str, 
-        text_content: str
+        html_content: str
     ) -> bool:
         """Send welcome email using SMTP fallback"""
         try:
@@ -470,7 +470,7 @@ class EmailService:
                 logger.info("=== WELCOME EMAIL (SMTP Not Configured) ===")
                 logger.info(f"To: {to_email}")
                 logger.info(f"Subject: {subject}")
-                logger.info(f"Content: {text_content}")
+                logger.info(f"Content: {html_content}")
                 logger.info("=======================================")
                 return True
             
@@ -480,9 +480,9 @@ class EmailService:
             msg['From'] = self.config["smtp_username"]
             msg['To'] = to_email
             
-            # Add text content
-            text_part = MIMEText(text_content, 'plain', 'utf-8')
-            msg.attach(text_part)
+            # Add HTML content
+            html_part = MIMEText(html_content, 'html', 'utf-8')
+            msg.attach(html_part)
             
             # Connect to SMTP server and send
             if self.config["smtp_use_tls"]:
@@ -504,7 +504,7 @@ class EmailService:
             logger.info("=== WELCOME EMAIL (SMTP Failed - Debug Info) ===")
             logger.info(f"To: {to_email}")
             logger.info(f"Subject: {subject}")
-            logger.info(f"Content: {text_content}")
+            logger.info(f"Content: {html_content}")
             logger.info("=======================================")
             return False
 
