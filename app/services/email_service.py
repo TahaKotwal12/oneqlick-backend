@@ -215,7 +215,8 @@ class EmailService:
             return True
         except Exception as e:
             logger.error(f"FastMail send failed: {e}")
-            return False
+            # Fallback to SMTP if FastMail fails
+            return self._send_with_smtp(to_email, subject, html_content)
     
     def _send_with_smtp(
         self, 
@@ -225,20 +226,48 @@ class EmailService:
     ) -> bool:
         """Send email using SMTP fallback"""
         try:
-            # For development, we'll use a simple console output
-            # In production, you would configure proper SMTP settings
-            logger.info("=== OTP EMAIL (Development Mode) ===")
-            logger.info(f"To: {to_email}")
-            logger.info(f"Subject: {subject}")
-            logger.info(f"Content: {text_content}")
-            logger.info("=====================================")
+            # Check if SMTP is configured
+            if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
+                logger.warning("SMTP not configured, logging email instead")
+                logger.info("=== OTP EMAIL (SMTP Not Configured) ===")
+                logger.info(f"To: {to_email}")
+                logger.info(f"Subject: {subject}")
+                logger.info(f"Content: {text_content}")
+                logger.info("=====================================")
+                return True
             
-            # In development, we'll simulate successful sending
-            # In production, implement actual SMTP sending here
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.config["smtp_username"]
+            msg['To'] = to_email
+            
+            # Add text content
+            text_part = MIMEText(text_content, 'plain', 'utf-8')
+            msg.attach(text_part)
+            
+            # Connect to SMTP server and send
+            if self.config["smtp_use_tls"]:
+                server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+                server.starttls()
+            else:
+                server = smtplib.SMTP_SSL(self.config["smtp_host"], self.config["smtp_port"])
+            
+            server.login(self.config["smtp_username"], self.config["smtp_password"])
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"OTP email sent successfully via SMTP to {to_email}")
             return True
             
         except Exception as e:
             logger.error(f"SMTP send failed: {e}")
+            # Log the email content for debugging
+            logger.info("=== OTP EMAIL (SMTP Failed - Debug Info) ===")
+            logger.info(f"To: {to_email}")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Content: {text_content}")
+            logger.info("=====================================")
             return False
     
     async def send_welcome_email(
@@ -424,7 +453,8 @@ class EmailService:
             return True
         except Exception as e:
             logger.error(f"FastMail welcome email send failed: {e}")
-            return False
+            # Fallback to SMTP if FastMail fails
+            return self._send_welcome_with_smtp(to_email, subject, html_content)
     
     def _send_welcome_with_smtp(
         self, 
@@ -434,18 +464,48 @@ class EmailService:
     ) -> bool:
         """Send welcome email using SMTP fallback"""
         try:
-            # For development, we'll use a simple console output
-            logger.info("=== WELCOME EMAIL (Development Mode) ===")
-            logger.info(f"To: {to_email}")
-            logger.info(f"Subject: {subject}")
-            logger.info(f"Content: {text_content}")
-            logger.info("=======================================")
+            # Check if SMTP is configured
+            if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
+                logger.warning("SMTP not configured, logging welcome email instead")
+                logger.info("=== WELCOME EMAIL (SMTP Not Configured) ===")
+                logger.info(f"To: {to_email}")
+                logger.info(f"Subject: {subject}")
+                logger.info(f"Content: {text_content}")
+                logger.info("=======================================")
+                return True
             
-            # In development, we'll simulate successful sending
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.config["smtp_username"]
+            msg['To'] = to_email
+            
+            # Add text content
+            text_part = MIMEText(text_content, 'plain', 'utf-8')
+            msg.attach(text_part)
+            
+            # Connect to SMTP server and send
+            if self.config["smtp_use_tls"]:
+                server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+                server.starttls()
+            else:
+                server = smtplib.SMTP_SSL(self.config["smtp_host"], self.config["smtp_port"])
+            
+            server.login(self.config["smtp_username"], self.config["smtp_password"])
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"Welcome email sent successfully via SMTP to {to_email}")
             return True
             
         except Exception as e:
             logger.error(f"SMTP welcome email send failed: {e}")
+            # Log the email content for debugging
+            logger.info("=== WELCOME EMAIL (SMTP Failed - Debug Info) ===")
+            logger.info(f"To: {to_email}")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Content: {text_content}")
+            logger.info("=======================================")
             return False
 
 # Global email service instance
