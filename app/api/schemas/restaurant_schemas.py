@@ -1,0 +1,235 @@
+from pydantic import BaseModel, Field, validator
+from typing import Optional, List
+from datetime import datetime, time
+from decimal import Decimal
+from uuid import UUID
+from app.utils.enums import RestaurantStatus
+
+
+# Request Schemas
+class NearbyRestaurantsRequest(BaseModel):
+    """Request schema for getting nearby restaurants"""
+    latitude: float = Field(..., ge=-90, le=90, description="User's latitude")
+    longitude: float = Field(..., ge=-180, le=180, description="User's longitude")
+    radius_km: Optional[float] = Field(5.0, ge=0.1, le=50, description="Search radius in kilometers")
+    limit: Optional[int] = Field(10, ge=1, le=100, description="Number of restaurants to return")
+    offset: Optional[int] = Field(0, ge=0, description="Pagination offset")
+    is_veg_only: Optional[bool] = Field(None, description="Filter for pure vegetarian restaurants")
+    is_open: Optional[bool] = Field(None, description="Filter for currently open restaurants")
+    sort_by: Optional[str] = Field("distance", description="Sort by: distance, rating, delivery_time")
+    
+    @validator('sort_by')
+    def validate_sort_by(cls, v):
+        valid_sorts = ['distance', 'rating', 'delivery_time', 'cost_low', 'cost_high']
+        if v not in valid_sorts:
+            raise ValueError(f'sort_by must be one of: {", ".join(valid_sorts)}')
+        return v
+
+
+class RestaurantDetailRequest(BaseModel):
+    """Request schema for getting restaurant details"""
+    include_menu: Optional[bool] = Field(False, description="Include menu items")
+    include_reviews: Optional[bool] = Field(False, description="Include reviews")
+    include_offers: Optional[bool] = Field(True, description="Include active offers")
+
+
+class RestaurantMenuRequest(BaseModel):
+    """Request schema for getting restaurant menu"""
+    category_id: Optional[UUID] = Field(None, description="Filter by category")
+    is_veg: Optional[bool] = Field(None, description="Filter vegetarian items")
+    is_available: Optional[bool] = Field(True, description="Only show available items")
+    search: Optional[str] = Field(None, max_length=100, description="Search in item names")
+
+
+class SearchRestaurantsRequest(BaseModel):
+    """Request schema for searching restaurants"""
+    query: Optional[str] = Field(None, max_length=100, description="Search term")
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    radius_km: Optional[float] = Field(5.0, ge=0.1, le=50)
+    cuisine_type: Optional[str] = Field(None, description="Filter by cuisine (comma-separated)")
+    is_pure_veg: Optional[bool] = None
+    is_open: Optional[bool] = None
+    min_rating: Optional[float] = Field(None, ge=0, le=5)
+    max_delivery_time: Optional[int] = Field(None, ge=0)
+    has_offers: Optional[bool] = None
+    sort_by: Optional[str] = Field("distance")
+    limit: Optional[int] = Field(10, ge=1, le=100)
+    offset: Optional[int] = Field(0, ge=0)
+
+
+# Response Schemas
+class RestaurantOfferResponse(BaseModel):
+    """Response schema for restaurant offers"""
+    offer_id: UUID
+    title: str
+    description: Optional[str]
+    discount_type: str
+    discount_value: Decimal
+    min_order_amount: Optional[Decimal]
+    max_discount_amount: Optional[Decimal]
+    valid_from: datetime
+    valid_until: datetime
+    is_active: bool
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class RestaurantLocationResponse(BaseModel):
+    """Response schema for restaurant location"""
+    address_line1: str
+    address_line2: Optional[str]
+    city: str
+    state: str
+    postal_code: str
+    latitude: Decimal
+    longitude: Decimal
+    
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class RestaurantBasicResponse(BaseModel):
+    """Basic restaurant information response"""
+    restaurant_id: UUID
+    name: str
+    description: Optional[str]
+    cuisine_type: Optional[str]
+    image: Optional[str]
+    cover_image: Optional[str]
+    rating: Decimal
+    total_ratings: int
+    avg_delivery_time: Optional[int]
+    delivery_fee: Decimal
+    min_order_amount: Decimal
+    cost_for_two: Optional[Decimal]
+    platform_fee: Decimal
+    status: str
+    is_open: bool
+    is_veg: bool
+    is_pure_veg: bool
+    opening_time: Optional[time]
+    closing_time: Optional[time]
+    distance: Optional[float] = Field(None, description="Distance in kilometers")
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v),
+            time: lambda v: v.strftime('%H:%M:%S') if v else None
+        }
+
+
+class RestaurantResponse(RestaurantBasicResponse):
+    """Complete restaurant response with nested data"""
+    location: RestaurantLocationResponse
+    offers: List[RestaurantOfferResponse] = []
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v),
+            time: lambda v: v.strftime('%H:%M:%S') if v else None
+        }
+
+
+class RestaurantDetailResponse(RestaurantResponse):
+    """Detailed restaurant response with contact info"""
+    phone: str
+    email: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v),
+            time: lambda v: v.strftime('%H:%M:%S') if v else None
+        }
+
+
+class NearbyRestaurantsResponse(BaseModel):
+    """Response schema for nearby restaurants list"""
+    restaurants: List[RestaurantResponse]
+    total_count: int
+    has_more: bool
+    
+    class Config:
+        from_attributes = True
+
+
+class CategoryResponse(BaseModel):
+    """Response schema for food category"""
+    category_id: UUID
+    name: str
+    description: Optional[str]
+    image: Optional[str]
+    is_active: bool
+    sort_order: int
+    
+    class Config:
+        from_attributes = True
+
+
+class FoodItemBasicResponse(BaseModel):
+    """Basic food item response"""
+    food_item_id: UUID
+    name: str
+    description: Optional[str]
+    price: Decimal
+    discount_price: Optional[Decimal]
+    image: Optional[str]
+    is_veg: bool
+    is_popular: bool
+    is_recommended: bool
+    rating: Decimal
+    total_ratings: int
+    prep_time: Optional[int]
+    calories: Optional[int]
+    category: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class PopularDishResponse(FoodItemBasicResponse):
+    """Popular dish response with restaurant info"""
+    restaurant_id: UUID
+    restaurant_name: str
+    restaurant_rating: Decimal
+    avg_delivery_time: Optional[int]
+    distance: Optional[float]
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class PopularDishesResponse(BaseModel):
+    """Response schema for popular dishes list"""
+    dishes: List[PopularDishResponse]
+    total_count: int
+    
+    class Config:
+        from_attributes = True
+
+
+class CategoriesResponse(BaseModel):
+    """Response schema for categories list"""
+    categories: List[CategoryResponse]
+    total_count: int
+    
+    class Config:
+        from_attributes = True
+

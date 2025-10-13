@@ -16,10 +16,16 @@ A clean FastAPI-based backend startup project with database connections, excepti
 
 ### 🚀 **Available Endpoints**
 
+#### System Endpoints
 | Endpoint    | Method | Description                    | Status     |
 | ----------- | ------ | ------------------------------ | ---------- |
 | `/`         | GET    | Root endpoint                  | ✅ Working |
 | `/health`   | GET    | Health check with DB/Redis     | ✅ Working |
+
+#### Restaurant APIs
+| Endpoint                        | Method | Description                    | Status     |
+| ------------------------------- | ------ | ------------------------------ | ---------- |
+| `/api/v1/restaurants/nearby`   | GET    | Get nearby restaurants         | ✅ Working |
 
 ### 📊 **Database Models**
 
@@ -29,6 +35,7 @@ The application includes comprehensive database models based on the SQL script:
 - `User` - Users with different roles (customer, admin, delivery_partner, restaurant_owner)
 - `Address` - User delivery addresses
 - `Restaurant` - Restaurant information and settings
+- `RestaurantOffer` - Restaurant offers and promotions
 - `Category` - Food categories
 - `FoodItem` - Menu items with variants
 - `FoodVariant` - Food item variants (size, extras)
@@ -152,6 +159,63 @@ app/
 2. **Add Business Logic** - Domain services and repositories
 3. **Add Authentication APIs** - Login, register, JWT tokens
 4. **Add More Features** - Based on your specific requirements
+
+## 🍽️ **Restaurant API Examples**
+
+### Get Nearby Restaurants
+
+**Basic Request:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&radius_km=10&limit=10"
+```
+
+**Filter Pure Veg Restaurants:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&is_veg_only=true"
+```
+
+**Filter Open Restaurants Only:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&is_open=true"
+```
+
+**Sort by Rating:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&sort_by=rating"
+```
+
+**Sort by Delivery Time:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&sort_by=delivery_time"
+```
+
+**Sort by Cost (Low to High):**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&sort_by=cost_low"
+```
+
+**With Pagination:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&limit=5&offset=0"
+```
+
+**Combined Filters:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/restaurants/nearby?latitude=28.6315&longitude=77.2167&radius_km=5&is_veg_only=true&is_open=true&sort_by=rating&limit=10"
+```
+
+### Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `latitude` | float | ✅ Yes | - | User's latitude (-90 to 90) |
+| `longitude` | float | ✅ Yes | - | User's longitude (-180 to 180) |
+| `radius_km` | float | ❌ No | 5.0 | Search radius in km (0.1 - 50) |
+| `limit` | int | ❌ No | 10 | Results per page (1 - 100) |
+| `offset` | int | ❌ No | 0 | Pagination offset |
+| `is_veg_only` | bool | ❌ No | - | Filter pure veg restaurants |
+| `is_open` | bool | ❌ No | - | Filter open restaurants |
+| `sort_by` | string | ❌ No | "distance" | distance, rating, delivery_time, cost_low, cost_high |
 
 ## 🧪 **Testing**
 

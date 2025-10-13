@@ -2,6 +2,7 @@
 from .user import User
 from .address import Address
 from .restaurant import Restaurant
+from .restaurant_offer import RestaurantOffer
 from .category import Category
 from .food_item import FoodItem
 from .food_variant import FoodVariant
@@ -32,6 +33,7 @@ __all__ = [
     'User',
     'Address',
     'Restaurant',
+    'RestaurantOffer',
     'Category',
     'FoodItem',
     'FoodVariant',
