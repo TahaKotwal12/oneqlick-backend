@@ -122,6 +122,10 @@ async def signup(
     try:
         from app.utils.pending_user_utils import PendingUserUtils
         
+        # Initialize pending_user variable
+        pending_user = None
+        logger.info(f"Starting signup process for email: {request.email}")
+        
         # Check if user already exists in main users table
         existing_user = AuthUtils.get_user_by_email(db, request.email)
         if existing_user:
@@ -173,16 +177,18 @@ async def signup(
                 PendingUserUtils.delete_pending_user(db, str(existing_pending_user.pending_user_id))
                 pending_user = None  # Will create new one below
         
-        existing_pending_phone = PendingUserUtils.get_pending_user_by_phone(db, request.phone)
-        if existing_pending_phone:
-            if not PendingUserUtils.is_token_expired(existing_pending_phone):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Phone number is already registered for verification"
-                )
-            else:
-                # Delete expired pending user
-                PendingUserUtils.delete_pending_user(db, str(existing_pending_phone.pending_user_id))
+        # Check if there's a pending user by phone (only if we don't already have one by email)
+        if not pending_user:
+            existing_pending_phone = PendingUserUtils.get_pending_user_by_phone(db, request.phone)
+            if existing_pending_phone:
+                if not PendingUserUtils.is_token_expired(existing_pending_phone):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Phone number is already registered for verification"
+                    )
+                else:
+                    # Delete expired pending user
+                    PendingUserUtils.delete_pending_user(db, str(existing_pending_phone.pending_user_id))
         
         # Hash password
         hashed_password = AuthUtils.hash_password(request.password)
@@ -198,6 +204,16 @@ async def signup(
                 password_hash=hashed_password,
                 role=UserRole.CUSTOMER.value
             )
+        
+        # Ensure pending_user is defined before proceeding
+        if not pending_user:
+            logger.error("Failed to create or retrieve pending user")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user account. Please try again."
+            )
+        
+        logger.info(f"Pending user determined: {pending_user.pending_user_id} for email: {request.email}")
         
         # Send OTP for email verification
         from app.utils.otp_utils import OTPUtils
@@ -806,35 +822,6 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 detail="Either email or phone must be provided"
             )
         
-        # Check rate limiting first (before creating OTP record)
-        # For pending users, use the new lockout system
-        if is_pending_user and pending_user:
-            lockout_status = PendingUserUtils.check_otp_lockout_status(pending_user)
-            
-            if lockout_status["is_locked"]:
-                remaining_minutes = lockout_status["remaining_seconds"] // 60
-                remaining_seconds = lockout_status["remaining_seconds"] % 60
-                
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"OTP request limit exceeded. Please wait {remaining_minutes}m {remaining_seconds}s before trying again."
-                )
-        else:
-            # For regular users, use the old rate limiting system
-            rate_limit_info = OTPUtils.check_send_rate_limit(
-                db=db,
-                email=request.email,
-                phone=request.phone,
-                otp_type=request.otp_type
-            )
-            
-            if not rate_limit_info["can_send"]:
-                logger.warning(f"OTP send rate limit exceeded for {request.email or request.phone}")
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"Too many OTP requests. You have used {rate_limit_info['total_attempts']}/{rate_limit_info['max_attempts']} attempts. Please try again later."
-                )
-        
         # Get user by email or phone (check both main users and pending users)
         user = None
         pending_user = None
@@ -864,6 +851,35 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             ) 
+        
+        # Check rate limiting based on user type
+        if is_pending_user and pending_user:
+            # For pending users, use the new lockout system
+            lockout_status = PendingUserUtils.check_otp_lockout_status(pending_user)
+            
+            if lockout_status["is_locked"]:
+                remaining_minutes = lockout_status["remaining_seconds"] // 60
+                remaining_seconds = lockout_status["remaining_seconds"] % 60
+                
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"OTP request limit exceeded. Please wait {remaining_minutes}m {remaining_seconds}s before trying again."
+                )
+        else:
+            # For regular users, use the old rate limiting system
+            rate_limit_info = OTPUtils.check_send_rate_limit(
+                db=db,
+                email=request.email,
+                phone=request.phone,
+                otp_type=request.otp_type
+            )
+            
+            if not rate_limit_info["can_send"]:
+                logger.warning(f"OTP send rate limit exceeded for {request.email or request.phone}")
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Too many OTP requests. You have used {rate_limit_info['total_attempts']}/{rate_limit_info['max_attempts']} attempts. Please try again later."
+                )
         
         # Determine which user to use for OTP creation
         if is_pending_user:
