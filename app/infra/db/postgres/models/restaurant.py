@@ -1,9 +1,8 @@
-from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Enum, Integer, Time
+from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Integer, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
-from app.utils.enums import RestaurantStatus
 
 
 class Restaurant(Base):
@@ -31,7 +30,7 @@ class Restaurant(Base):
     delivery_fee = Column(DECIMAL(10, 2), default=0)
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
-    status = Column(Enum(RestaurantStatus), default=RestaurantStatus.ACTIVE)
+    status = Column(String(20), default='active')  # restaurant_status enum in DB
     is_open = Column(Boolean, default=True)
     opening_time = Column(Time)
     closing_time = Column(Time)
