@@ -1,11 +1,14 @@
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.infra.db.postgres.models.pending_user import PendingUser
 from app.infra.db.postgres.models.user import User
 from app.utils.enums import UserRole, UserStatus
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PendingUserUtils:
@@ -154,3 +157,76 @@ class PendingUserUtils:
             db.commit()
             return True
         return False
+    
+    @staticmethod
+    def check_otp_lockout_status(pending_user: PendingUser) -> Dict[str, Any]:
+        """Check if a pending user is currently locked out from OTP requests."""
+        now = datetime.now(timezone.utc)
+        
+        # Check if user is currently locked out
+        if pending_user.otp_locked_until and now < pending_user.otp_locked_until:
+            remaining_lockout_seconds = int((pending_user.otp_locked_until - now).total_seconds())
+            return {
+                "is_locked": True,
+                "remaining_seconds": remaining_lockout_seconds,
+                "locked_until": pending_user.otp_locked_until,
+                "attempts_used": pending_user.otp_attempts,
+                "max_attempts": pending_user.max_otp_attempts
+            }
+        
+        # Check if user has exceeded attempts but lockout has expired
+        if pending_user.otp_attempts >= pending_user.max_otp_attempts:
+            # Reset attempts if lockout has expired
+            pending_user.otp_attempts = 0
+            pending_user.otp_locked_until = None
+            db.commit()
+        
+        return {
+            "is_locked": False,
+            "remaining_seconds": 0,
+            "locked_until": None,
+            "attempts_used": pending_user.otp_attempts,
+            "max_attempts": pending_user.max_otp_attempts
+        }
+    
+    @staticmethod
+    def increment_otp_attempts(db: Session, pending_user: PendingUser) -> Dict[str, Any]:
+        """Increment OTP attempts for a pending user and check if lockout is needed."""
+        pending_user.otp_attempts += 1
+        
+        # Check if user should be locked out
+        if pending_user.otp_attempts >= pending_user.max_otp_attempts:
+            # Lock the user for the specified duration
+            lockout_duration = timedelta(minutes=pending_user.lockout_duration_minutes)
+            pending_user.otp_locked_until = datetime.now(timezone.utc) + lockout_duration
+            
+            logger.info(f"User {pending_user.email} locked out for {pending_user.lockout_duration_minutes} minutes due to OTP limit")
+        
+        db.commit()
+        
+        return {
+            "attempts_used": pending_user.otp_attempts,
+            "max_attempts": pending_user.max_otp_attempts,
+            "is_locked": pending_user.otp_attempts >= pending_user.max_otp_attempts,
+            "locked_until": pending_user.otp_locked_until
+        }
+    
+    @staticmethod
+    def reset_otp_attempts(db: Session, pending_user: PendingUser) -> None:
+        """Reset OTP attempts for a pending user (called on successful verification)."""
+        pending_user.otp_attempts = 0
+        pending_user.otp_locked_until = None
+        db.commit()
+        logger.info(f"OTP attempts reset for user {pending_user.email}")
+    
+    @staticmethod
+    def update_pending_user_otp_status(
+        db: Session, 
+        pending_user: PendingUser, 
+        increment_attempts: bool = True
+    ) -> Dict[str, Any]:
+        """Update pending user OTP status and return current lockout information."""
+        if increment_attempts:
+            return PendingUserUtils.increment_otp_attempts(db, pending_user)
+        else:
+            return PendingUserUtils.check_otp_lockout_status(pending_user)
