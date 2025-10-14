@@ -782,6 +782,21 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 detail="Either email or phone must be provided"
             )
         
+        # Check rate limiting first (before creating OTP record)
+        rate_limit_info = OTPUtils.check_send_rate_limit(
+            db=db,
+            email=request.email,
+            phone=request.phone,
+            otp_type=request.otp_type
+        )
+        
+        if not rate_limit_info["can_send"]:
+            logger.warning(f"OTP send rate limit exceeded for {request.email or request.phone}")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many OTP requests. You have used {rate_limit_info['total_attempts']}/{rate_limit_info['max_attempts']} attempts. Please try again later."
+            )
+        
         # Get user by email or phone (check both main users and pending users)
         user = None
         pending_user = None
@@ -866,6 +881,14 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
             logger.info(f"Phone OTP: {otp_record.otp_code} for {request.phone}")
             # TODO: Implement actual SMS sending service integration
         
+        # Get updated rate limit info after OTP creation
+        updated_rate_limit_info = OTPUtils.check_send_rate_limit(
+            db=db,
+            email=request.email,
+            phone=request.phone,
+            otp_type=request.otp_type
+        )
+        
         return CommonResponse(
             code=200,
             message="OTP sent successfully",
@@ -874,7 +897,10 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 message="OTP sent successfully",
                 expires_in=600,  # 10 minutes
                 phone=request.phone,
-                email=request.email
+                email=request.email,
+                remaining_attempts=updated_rate_limit_info["remaining_attempts"],
+                max_attempts=updated_rate_limit_info["max_attempts"],
+                rate_limited=False
             )
         )
     

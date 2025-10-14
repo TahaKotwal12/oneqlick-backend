@@ -18,6 +18,7 @@ class OTPUtils:
     OTP_LENGTH = 6
     OTP_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 3
+    MAX_SEND_ATTEMPTS = 3  # Maximum number of OTP sending attempts
     OTP_CHARS = string.digits  # Only numeric OTPs
     
     @staticmethod
@@ -304,6 +305,54 @@ class OTPUtils:
             logger.error(f"Failed to cleanup expired OTPs: {e}")
             db.rollback()
             return 0
+    
+    @staticmethod
+    def check_send_rate_limit(
+        db: Session,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        otp_type: str = "email_verification",
+        is_pending_user: bool = False
+    ) -> Dict[str, Any]:
+        """Check if user has exceeded OTP sending rate limit"""
+        try:
+            # Build query conditions based on user type and identifier
+            conditions = [
+                OTPVerification.otp_type == otp_type,
+                OTPVerification.created_at >= datetime.now(timezone.utc) - timedelta(hours=24)  # Last 24 hours
+            ]
+            
+            if email:
+                conditions.append(OTPVerification.email == email)
+            if phone:
+                conditions.append(OTPVerification.phone == phone)
+            
+            # Count OTP sending attempts in last 24 hours
+            recent_otps = db.query(OTPVerification).filter(and_(*conditions)).count()
+            
+            # Check if we can send one more OTP (remaining attempts after this one)
+            remaining_attempts = max(0, OTPUtils.MAX_SEND_ATTEMPTS - recent_otps)
+            can_send = recent_otps < OTPUtils.MAX_SEND_ATTEMPTS
+            
+            logger.info(f"OTP send rate limit check: {recent_otps}/{OTPUtils.MAX_SEND_ATTEMPTS} attempts used, {remaining_attempts} remaining")
+            
+            return {
+                "can_send": can_send,
+                "remaining_attempts": remaining_attempts,
+                "total_attempts": recent_otps,
+                "max_attempts": OTPUtils.MAX_SEND_ATTEMPTS,
+                "reset_time": datetime.now(timezone.utc) + timedelta(hours=24)
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to check send rate limit: {e}")
+            return {
+                "can_send": False,
+                "remaining_attempts": 0,
+                "total_attempts": 0,
+                "max_attempts": OTPUtils.MAX_SEND_ATTEMPTS,
+                "reset_time": None
+            }
     
     @staticmethod
     def get_otp_stats(db: Session, user_id: str) -> Dict[str, Any]:
