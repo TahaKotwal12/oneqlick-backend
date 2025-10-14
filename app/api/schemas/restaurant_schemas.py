@@ -99,23 +99,23 @@ class RestaurantBasicResponse(BaseModel):
     """Basic restaurant information response"""
     restaurant_id: UUID
     name: str
-    description: Optional[str]
-    cuisine_type: Optional[str]
-    image: Optional[str]
-    cover_image: Optional[str]
-    rating: Decimal
-    total_ratings: int
-    avg_delivery_time: Optional[int]
-    delivery_fee: Decimal
-    min_order_amount: Decimal
-    cost_for_two: Optional[Decimal]
-    platform_fee: Decimal
-    status: str
-    is_open: bool
-    is_veg: bool
-    is_pure_veg: bool
-    opening_time: Optional[time]
-    closing_time: Optional[time]
+    description: Optional[str] = None
+    cuisine_type: Optional[str] = None
+    image: Optional[str] = None
+    cover_image: Optional[str] = None
+    rating: Decimal = Decimal('0.0')
+    total_ratings: int = 0
+    avg_delivery_time: Optional[int] = None
+    delivery_fee: Optional[Decimal] = None
+    min_order_amount: Optional[Decimal] = None
+    cost_for_two: Optional[Decimal] = None
+    platform_fee: Optional[Decimal] = None
+    status: str = 'active'
+    is_open: bool = False
+    is_veg: bool = False
+    is_pure_veg: bool = False
+    opening_time: Optional[time] = None
+    closing_time: Optional[time] = None
     distance: Optional[float] = Field(None, description="Distance in kilometers")
     
     class Config:
@@ -201,13 +201,24 @@ class FoodItemBasicResponse(BaseModel):
         }
 
 
-class PopularDishResponse(FoodItemBasicResponse):
-    """Popular dish response with restaurant info"""
-    restaurant_id: UUID
-    restaurant_name: str
-    restaurant_rating: Decimal
-    avg_delivery_time: Optional[int]
-    distance: Optional[float]
+class PopularDishResponse(BaseModel):
+    """Response schema for popular dish with restaurant info"""
+    food_item_id: UUID
+    name: str
+    description: Optional[str]
+    price: Decimal
+    discount_price: Optional[Decimal]
+    image: Optional[str]
+    is_veg: bool
+    is_popular: bool
+    is_recommended: bool
+    rating: Decimal
+    total_ratings: int
+    prep_time: Optional[int]
+    calories: Optional[int]
+    category: Optional[str] = None
+    restaurant: RestaurantBasicResponse
+    distance: Optional[float] = Field(None, description="Distance in kilometers")
     
     class Config:
         from_attributes = True
@@ -220,6 +231,7 @@ class PopularDishesResponse(BaseModel):
     """Response schema for popular dishes list"""
     dishes: List[PopularDishResponse]
     total_count: int
+    has_more: bool
     
     class Config:
         from_attributes = True

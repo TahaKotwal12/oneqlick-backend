@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timezone
+from decimal import Decimal
 import math
 
 from app.infra.db.postgres.postgres_config import get_db
@@ -10,11 +11,16 @@ from app.api.schemas.restaurant_schemas import (
     NearbyRestaurantsResponse,
     RestaurantResponse,
     RestaurantLocationResponse,
-    RestaurantOfferResponse
+    RestaurantOfferResponse,
+    PopularDishesResponse,
+    PopularDishResponse,
+    RestaurantBasicResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.restaurant import Restaurant
 from app.infra.db.postgres.models.restaurant_offer import RestaurantOffer
+from app.infra.db.postgres.models.food_item import FoodItem
+from app.infra.db.postgres.models.category import Category
 from app.infra.db.postgres.models.user import User
 from app.config.logger import get_logger
 
@@ -238,5 +244,163 @@ async def get_nearby_restaurants(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch nearby restaurants: {str(e)}"
+        )
+
+
+@router.get("/popular-dishes", response_model=CommonResponse[PopularDishesResponse])
+async def get_popular_dishes(
+    latitude: float = Query(..., ge=-90, le=90, description="User's latitude"),
+    longitude: float = Query(..., ge=-180, le=180, description="User's longitude"),
+    radius_km: float = Query(10.0, ge=0.1, le=50, description="Search radius in kilometers"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of dishes to return"),
+    is_veg_only: Optional[bool] = Query(None, description="Filter for vegetarian dishes only"),
+    category: Optional[str] = Query(None, description="Filter by food category"),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get popular dishes from nearby restaurants based on user's location.
+    Returns dishes marked as popular from restaurants within the specified radius.
+    """
+    try:
+        # Haversine formula for distance calculation
+        def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            R = 6371  # Earth's radius in kilometers
+            dlat = math.radians(lat2 - lat1)
+            dlon = math.radians(lon2 - lon1)
+            a = (math.sin(dlat/2) * math.sin(dlat/2) + 
+                 math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * 
+                 math.sin(dlon/2) * math.sin(dlon/2))
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            return R * c
+
+        # Get nearby restaurants first
+        nearby_restaurants_query = db.query(Restaurant).filter(
+            Restaurant.status == 'active'
+        )
+        
+        # Calculate distance for each restaurant and filter by radius
+        nearby_restaurants = []
+        for restaurant in nearby_restaurants_query.all():
+            if restaurant.latitude and restaurant.longitude:
+                distance = calculate_distance(
+                    latitude, longitude, 
+                    float(restaurant.latitude), float(restaurant.longitude)
+                )
+                if distance <= radius_km:
+                    restaurant.distance = distance
+                    nearby_restaurants.append(restaurant)
+        
+        if not nearby_restaurants:
+            return CommonResponse(
+                code=200,
+                message="No restaurants found within the specified radius",
+                message_id="NO_RESTAURANTS_FOUND",
+                data=PopularDishesResponse(
+                    dishes=[],
+                    total_count=0,
+                    has_more=False
+                )
+            )
+        
+        # Get restaurant IDs
+        restaurant_ids = [r.restaurant_id for r in nearby_restaurants]
+        
+        # Query popular dishes from nearby restaurants
+        query = db.query(FoodItem).filter(
+            FoodItem.restaurant_id.in_(restaurant_ids),
+            FoodItem.status == 'available',
+            FoodItem.is_popular == True
+        )
+        
+        # Apply filters
+        if is_veg_only is not None:
+            query = query.filter(FoodItem.is_veg == is_veg_only)
+        
+        if category:
+            query = query.join(Category, FoodItem.category_id == Category.category_id).filter(Category.name.ilike(f"%{category}%"))
+        
+        # Order by rating and total_ratings for popularity
+        query = query.order_by(
+            FoodItem.rating.desc(),
+            FoodItem.total_ratings.desc(),
+            FoodItem.created_at.desc()
+        )
+        
+        # Get total count before pagination
+        total_count = query.count()
+        
+        # Apply pagination
+        dishes = query.offset(0).limit(limit).all()
+        
+        # Create a mapping of restaurant_id to restaurant for quick lookup
+        restaurant_map = {r.restaurant_id: r for r in nearby_restaurants}
+        
+        # Get category names for dishes
+        category_ids = [dish.category_id for dish in dishes if dish.category_id]
+        categories = {}
+        if category_ids:
+            category_query = db.query(Category).filter(Category.category_id.in_(category_ids))
+            categories = {cat.category_id: cat.name for cat in category_query.all()}
+        
+        # Transform dishes to include restaurant info and distance
+        popular_dishes = []
+        for dish in dishes:
+            restaurant = restaurant_map.get(dish.restaurant_id)
+            if restaurant:
+                # Create restaurant basic response
+                restaurant_basic = RestaurantBasicResponse(
+                    restaurant_id=restaurant.restaurant_id,
+                    name=restaurant.name,
+                    cuisine_type=restaurant.cuisine_type,
+                    rating=restaurant.rating or Decimal('0.0'),
+                    total_ratings=restaurant.total_ratings or 0,
+                    avg_delivery_time=restaurant.avg_delivery_time,
+                    image=restaurant.image,
+                    is_open=restaurant.is_open,
+                    is_veg=restaurant.is_veg,
+                    is_pure_veg=restaurant.is_pure_veg
+                )
+                
+                # Create popular dish response
+                popular_dish = PopularDishResponse(
+                    food_item_id=dish.food_item_id,
+                    name=dish.name,
+                    description=dish.description,
+                    price=dish.price,
+                    discount_price=dish.discount_price,
+                    image=dish.image,
+                    is_veg=dish.is_veg,
+                    is_popular=dish.is_popular,
+                    is_recommended=dish.is_recommended,
+                    rating=dish.rating or Decimal('0.0'),
+                    total_ratings=dish.total_ratings or 0,
+                    prep_time=dish.prep_time,
+                    calories=dish.calories,
+                    category=categories.get(dish.category_id, 'General'),
+                    restaurant=restaurant_basic,
+                    distance=restaurant.distance
+                )
+                popular_dishes.append(popular_dish)
+        
+        # Check if there are more dishes
+        has_more = total_count > limit
+        
+        return CommonResponse(
+            code=200,
+            message=f"Found {len(popular_dishes)} popular dishes from nearby restaurants",
+            message_id="POPULAR_DISHES_SUCCESS",
+            data=PopularDishesResponse(
+                dishes=popular_dishes,
+                total_count=total_count,
+                has_more=has_more
+            )
+        )
+        
+    except Exception as e:
+        logger.error(f"Error fetching popular dishes: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch popular dishes: {str(e)}"
         )
 

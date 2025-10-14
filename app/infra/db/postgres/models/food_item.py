@@ -1,9 +1,8 @@
-from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Enum, Integer
+from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
-from app.utils.enums import FoodStatus
 
 
 class FoodItem(Base):
@@ -23,7 +22,7 @@ class FoodItem(Base):
     allergens = Column(String)
     calories = Column(Integer)
     prep_time = Column(Integer)  # in minutes
-    status = Column(Enum(FoodStatus), default=FoodStatus.AVAILABLE)
+    status = Column(String(20), default='AVAILABLE')
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
     sort_order = Column(Integer, default=0)
