@@ -15,7 +15,10 @@ from app.api.schemas.restaurant_schemas import (
     PopularDishesResponse,
     PopularDishResponse,
     RestaurantBasicResponse,
-    RestaurantDetailResponse
+    RestaurantDetailResponse,
+    MenuItemResponse,
+    MenuCategoryResponse,
+    RestaurantMenuResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.restaurant import Restaurant
@@ -476,6 +479,77 @@ async def get_restaurant_by_id(
             ) for offer in offers
         ]
         
+        # Fetch menu data if requested
+        menu_data = None
+        if include_menu:
+            # Get all food items for this restaurant
+            food_items = db.query(FoodItem).filter(
+                FoodItem.restaurant_id == restaurant.restaurant_id,
+                FoodItem.status == 'AVAILABLE'
+            ).order_by(FoodItem.sort_order, FoodItem.name).all()
+            
+            # Get all categories for this restaurant
+            category_ids = list(set([item.category_id for item in food_items if item.category_id]))
+            categories = db.query(Category).filter(
+                Category.category_id.in_(category_ids),
+                Category.is_active == True
+            ).order_by(Category.sort_order, Category.name).all()
+            
+            # Create category map for quick lookup
+            category_map = {cat.category_id: cat for cat in categories}
+            
+            # Group food items by category
+            menu_categories = []
+            total_items = 0
+            
+            for category in categories:
+                category_items = [item for item in food_items if item.category_id == category.category_id]
+                if category_items:  # Only include categories that have items
+                    # Transform food items to response format
+                    menu_items = []
+                    for item in category_items:
+                        menu_item = MenuItemResponse(
+                            food_item_id=item.food_item_id,
+                            name=item.name,
+                            description=item.description,
+                            price=item.price,
+                            discount_price=item.discount_price,
+                            image=item.image,
+                            is_veg=item.is_veg,
+                            ingredients=item.ingredients,
+                            allergens=item.allergens,
+                            calories=item.calories,
+                            prep_time=item.prep_time,
+                            status=item.status,
+                            rating=item.rating,
+                            total_ratings=item.total_ratings,
+                            is_popular=item.is_popular,
+                            is_recommended=item.is_recommended,
+                            nutrition_info=item.nutrition_info,
+                            preparation_time=item.preparation_time,
+                            category=category.name
+                        )
+                        menu_items.append(menu_item)
+                        total_items += 1
+                    
+                    # Create category response
+                    menu_category = MenuCategoryResponse(
+                        category_id=category.category_id,
+                        name=category.name,
+                        description=category.description,
+                        image=category.image,
+                        is_active=category.is_active,
+                        sort_order=category.sort_order,
+                        items=menu_items
+                    )
+                    menu_categories.append(menu_category)
+            
+            # Create menu response
+            menu_data = RestaurantMenuResponse(
+                categories=menu_categories,
+                total_items=total_items
+            )
+        
         # Build restaurant response
         restaurant_dict = {
             'restaurant_id': restaurant.restaurant_id,
@@ -502,7 +576,8 @@ async def get_restaurant_by_id(
             'phone': restaurant.phone,
             'email': restaurant.email,
             'created_at': restaurant.created_at,
-            'updated_at': restaurant.updated_at
+            'updated_at': restaurant.updated_at,
+            'menu': menu_data
         }
         
         restaurant_response = RestaurantDetailResponse(**restaurant_dict)

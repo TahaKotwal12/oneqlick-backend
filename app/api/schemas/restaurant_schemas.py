@@ -139,21 +139,6 @@ class RestaurantResponse(RestaurantBasicResponse):
         }
 
 
-class RestaurantDetailResponse(RestaurantResponse):
-    """Detailed restaurant response with contact info"""
-    phone: str
-    email: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            Decimal: lambda v: float(v),
-            time: lambda v: v.strftime('%H:%M:%S') if v else None
-        }
-
-
 class NearbyRestaurantsResponse(BaseModel):
     """Response schema for nearby restaurants list"""
     restaurants: List[RestaurantResponse]
@@ -245,3 +230,70 @@ class CategoriesResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class MenuItemResponse(BaseModel):
+    """Response schema for menu item"""
+    food_item_id: UUID
+    name: str
+    description: Optional[str]
+    price: Decimal
+    discount_price: Optional[Decimal]
+    image: Optional[str]
+    is_veg: bool
+    ingredients: Optional[str]
+    allergens: Optional[str]
+    calories: Optional[int]
+    prep_time: Optional[int]
+    status: str
+    rating: Decimal
+    total_ratings: int
+    is_popular: bool
+    is_recommended: bool
+    nutrition_info: Optional[dict] = None
+    preparation_time: Optional[str]
+    category: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class MenuCategoryResponse(BaseModel):
+    """Response schema for menu category with items"""
+    category_id: UUID
+    name: str
+    description: Optional[str]
+    image: Optional[str]
+    is_active: bool
+    sort_order: int
+    items: List[MenuItemResponse] = []
+    
+    class Config:
+        from_attributes = True
+
+
+class RestaurantMenuResponse(BaseModel):
+    """Response schema for restaurant menu"""
+    categories: List[MenuCategoryResponse]
+    total_items: int
+    
+    class Config:
+        from_attributes = True
+
+
+class RestaurantDetailResponse(RestaurantResponse):
+    """Detailed restaurant response with contact info and menu"""
+    phone: str
+    email: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    menu: Optional[RestaurantMenuResponse] = None
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v),
+            time: lambda v: v.strftime('%H:%M:%S') if v else None
+        }
