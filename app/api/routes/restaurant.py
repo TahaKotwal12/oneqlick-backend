@@ -14,7 +14,8 @@ from app.api.schemas.restaurant_schemas import (
     RestaurantOfferResponse,
     PopularDishesResponse,
     PopularDishResponse,
-    RestaurantBasicResponse
+    RestaurantBasicResponse,
+    RestaurantDetailResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.restaurant import Restaurant
@@ -404,3 +405,124 @@ async def get_popular_dishes(
             detail=f"Failed to fetch popular dishes: {str(e)}"
         )
 
+
+@router.get("/{restaurant_id}", response_model=CommonResponse[RestaurantDetailResponse])
+async def get_restaurant_by_id(
+    restaurant_id: str,
+    include_menu: bool = Query(False, description="Include menu items"),
+    include_reviews: bool = Query(False, description="Include reviews"),
+    include_offers: bool = Query(True, description="Include active offers"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Get restaurant details by ID.
+    
+    This endpoint returns detailed information about a specific restaurant,
+    including contact information, location, offers, and optionally menu items and reviews.
+    """
+    try:
+        logger.info(f"Fetching restaurant details for ID: {restaurant_id}")
+        
+        # Get restaurant from database
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.restaurant_id == restaurant_id,
+            Restaurant.status == 'active'
+        ).first()
+        
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurant not found"
+            )
+        
+        # Check if restaurant is currently open
+        currently_open = is_restaurant_currently_open(restaurant)
+        
+        # Build location response
+        location = RestaurantLocationResponse(
+            address_line1=restaurant.address_line1,
+            address_line2=restaurant.address_line2,
+            city=restaurant.city,
+            state=restaurant.state,
+            postal_code=restaurant.postal_code,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude
+        )
+        
+        # Fetch active offers if requested
+        offers = []
+        if include_offers:
+            offers = db.query(RestaurantOffer).filter(
+                RestaurantOffer.restaurant_id == restaurant.restaurant_id,
+                RestaurantOffer.is_active == True,
+                RestaurantOffer.valid_from <= datetime.now(timezone.utc),
+                RestaurantOffer.valid_until >= datetime.now(timezone.utc)
+            ).all()
+        
+        # Build offer responses
+        offer_responses = [
+            RestaurantOfferResponse(
+                offer_id=offer.offer_id,
+                title=offer.title,
+                description=offer.description,
+                discount_type=offer.discount_type,
+                discount_value=offer.discount_value,
+                min_order_amount=offer.min_order_amount,
+                max_discount_amount=offer.max_discount_amount,
+                valid_from=offer.valid_from,
+                valid_until=offer.valid_until,
+                is_active=offer.is_active
+            ) for offer in offers
+        ]
+        
+        # Build restaurant response
+        restaurant_dict = {
+            'restaurant_id': restaurant.restaurant_id,
+            'name': restaurant.name,
+            'description': restaurant.description,
+            'cuisine_type': restaurant.cuisine_type,
+            'image': restaurant.image,
+            'cover_image': restaurant.cover_image,
+            'rating': restaurant.rating,
+            'total_ratings': restaurant.total_ratings,
+            'avg_delivery_time': restaurant.avg_delivery_time,
+            'delivery_fee': restaurant.delivery_fee,
+            'min_order_amount': restaurant.min_order_amount,
+            'cost_for_two': restaurant.cost_for_two,
+            'platform_fee': restaurant.platform_fee,
+            'status': restaurant.status,
+            'is_open': currently_open,
+            'is_veg': restaurant.is_veg,
+            'is_pure_veg': restaurant.is_pure_veg,
+            'opening_time': restaurant.opening_time,
+            'closing_time': restaurant.closing_time,
+            'location': location,
+            'offers': offer_responses,
+            'phone': restaurant.phone,
+            'email': restaurant.email,
+            'created_at': restaurant.created_at,
+            'updated_at': restaurant.updated_at
+        }
+        
+        restaurant_response = RestaurantDetailResponse(**restaurant_dict)
+        
+        logger.info(f"Restaurant details retrieved successfully for: {restaurant.name}")
+        
+        return CommonResponse(
+            code=200,
+            message="Restaurant details retrieved successfully",
+            message_id="RESTAURANT_DETAILS_SUCCESS",
+            data=restaurant_response
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching restaurant details: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch restaurant details: {str(e)}"
+        )
