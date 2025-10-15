@@ -485,7 +485,7 @@ async def get_restaurant_by_id(
             # Get all food items for this restaurant
             food_items = db.query(FoodItem).filter(
                 FoodItem.restaurant_id == restaurant.restaurant_id,
-                FoodItem.status == 'AVAILABLE'
+                FoodItem.status == 'available'
             ).order_by(FoodItem.sort_order, FoodItem.name).all()
             
             # Get all categories for this restaurant
