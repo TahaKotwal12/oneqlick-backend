@@ -252,6 +252,17 @@ async def signup(
             
             if email_sent:
                 logger.info(f"OTP sent successfully to {request.email} for email verification")
+                # Count the signup OTP as the first attempt for lockout logic
+                try:
+                    from app.utils.pending_user_utils import PendingUserUtils as _PU
+                    _PU.update_pending_user_otp_status(db, pending_user, increment_attempts=True)
+                    logger.info(
+                        f"Initialized OTP attempts for pending user {pending_user.pending_user_id}"
+                    )
+                except Exception as incr_err:
+                    logger.warning(
+                        f"Failed to initialize OTP attempts for pending user {pending_user.pending_user_id}: {incr_err}"
+                    )
             else:
                 logger.error(f"Email service returned False for {request.email}")
                 # Clean up pending user if email sending fails
