@@ -17,3 +17,4 @@ COMMENT ON COLUMN core_mstr_one_qlick_pending_users_tbl.lockout_duration_minutes
 CREATE INDEX IF NOT EXISTS idx_pending_users_otp_lockout 
 ON core_mstr_one_qlick_pending_users_tbl (otp_locked_until) 
 WHERE otp_locked_until IS NOT NULL;
+
