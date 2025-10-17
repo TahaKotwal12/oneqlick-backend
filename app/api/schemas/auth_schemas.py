@@ -130,6 +130,9 @@ class SendOTPResponse(BaseModel):
     expires_in: int
     phone: Optional[str] = None
     email: Optional[str] = None
+    remaining_attempts: Optional[int] = None
+    max_attempts: Optional[int] = None
+    rate_limited: Optional[bool] = None
 
 class VerifyOTPResponse(BaseModel):
     verified: bool

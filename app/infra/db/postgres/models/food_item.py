@@ -22,7 +22,7 @@ class FoodItem(Base):
     allergens = Column(String)
     calories = Column(Integer)
     prep_time = Column(Integer)  # in minutes
-    status = Column(String(20), default='AVAILABLE')
+    status = Column(String(20), default='available')
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
     sort_order = Column(Integer, default=0)

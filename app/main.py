@@ -14,7 +14,7 @@ from app.infra.db.postgres.models import user as user_model, address, otp_verifi
 from app.workers.batch_cleanup_worker import start_batch_cleanup_worker, stop_batch_cleanup_worker, get_worker_status
 import logging
 
-APP_TITLE = "OneQlick Backend - Clean Startup"
+APP_TITLE = "OneQlick Backend"
 app = FastAPI(title=APP_TITLE)
 
 # Include API routes

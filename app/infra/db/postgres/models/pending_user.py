@@ -23,5 +23,12 @@ class PendingUser(Base):
     verification_token = Column(String(255), unique=True, nullable=False)  # For email verification
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)  # Token expiration
     is_verified = Column(Boolean, default=False)
+    
+    # OTP Lockout System
+    otp_attempts = Column(Integer, default=0)  # Number of OTP attempts made
+    max_otp_attempts = Column(Integer, default=3)  # Maximum OTP attempts allowed
+    otp_locked_until = Column(TIMESTAMP(timezone=True), nullable=True)  # Lockout expiry time
+    lockout_duration_minutes = Column(Integer, default=10)  # Lockout duration in minutes
+    
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
