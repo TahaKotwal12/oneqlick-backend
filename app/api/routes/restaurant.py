@@ -409,200 +409,6 @@ async def get_popular_dishes(
         )
 
 
-@router.get("/{restaurant_id}", response_model=CommonResponse[RestaurantDetailResponse])
-async def get_restaurant_by_id(
-    restaurant_id: str,
-    include_menu: bool = Query(False, description="Include menu items"),
-    include_reviews: bool = Query(False, description="Include reviews"),
-    include_offers: bool = Query(True, description="Include active offers"),
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
-):
-    """
-    Get restaurant details by ID.
-    
-    This endpoint returns detailed information about a specific restaurant,
-    including contact information, location, offers, and optionally menu items and reviews.
-    """
-    try:
-        logger.info(f"Fetching restaurant details for ID: {restaurant_id}")
-        
-        # Get restaurant from database
-        restaurant = db.query(Restaurant).filter(
-            Restaurant.restaurant_id == restaurant_id,
-            Restaurant.status == 'active'
-        ).first()
-        
-        if not restaurant:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Restaurant not found"
-            )
-        
-        # Check if restaurant is currently open
-        currently_open = is_restaurant_currently_open(restaurant)
-        
-        # Build location response
-        location = RestaurantLocationResponse(
-            address_line1=restaurant.address_line1,
-            address_line2=restaurant.address_line2,
-            city=restaurant.city,
-            state=restaurant.state,
-            postal_code=restaurant.postal_code,
-            latitude=restaurant.latitude,
-            longitude=restaurant.longitude
-        )
-        
-        # Fetch active offers if requested
-        offers = []
-        if include_offers:
-            offers = db.query(RestaurantOffer).filter(
-                RestaurantOffer.restaurant_id == restaurant.restaurant_id,
-                RestaurantOffer.is_active == True,
-                RestaurantOffer.valid_from <= datetime.now(timezone.utc),
-                RestaurantOffer.valid_until >= datetime.now(timezone.utc)
-            ).all()
-        
-        # Build offer responses
-        offer_responses = [
-            RestaurantOfferResponse(
-                offer_id=offer.offer_id,
-                title=offer.title,
-                description=offer.description,
-                discount_type=offer.discount_type,
-                discount_value=offer.discount_value,
-                min_order_amount=offer.min_order_amount,
-                max_discount_amount=offer.max_discount_amount,
-                valid_from=offer.valid_from,
-                valid_until=offer.valid_until,
-                is_active=offer.is_active
-            ) for offer in offers
-        ]
-        
-        # Fetch menu data if requested
-        menu_data = None
-        if include_menu:
-            # Get all food items for this restaurant
-            food_items = db.query(FoodItem).filter(
-                FoodItem.restaurant_id == restaurant.restaurant_id,
-                FoodItem.status == 'available'
-            ).order_by(FoodItem.sort_order, FoodItem.name).all()
-            
-            # Get all categories for this restaurant
-            category_ids = list(set([item.category_id for item in food_items if item.category_id]))
-            categories = db.query(Category).filter(
-                Category.category_id.in_(category_ids),
-                Category.is_active == True
-            ).order_by(Category.sort_order, Category.name).all()
-            
-            # Create category map for quick lookup
-            category_map = {cat.category_id: cat for cat in categories}
-            
-            # Group food items by category
-            menu_categories = []
-            total_items = 0
-            
-            for category in categories:
-                category_items = [item for item in food_items if item.category_id == category.category_id]
-                if category_items:  # Only include categories that have items
-                    # Transform food items to response format
-                    menu_items = []
-                    for item in category_items:
-                        menu_item = MenuItemResponse(
-                            food_item_id=item.food_item_id,
-                            name=item.name,
-                            description=item.description,
-                            price=item.price,
-                            discount_price=item.discount_price,
-                            image=item.image,
-                            is_veg=item.is_veg,
-                            ingredients=item.ingredients,
-                            allergens=item.allergens,
-                            calories=item.calories,
-                            prep_time=item.prep_time,
-                            status=item.status,
-                            rating=item.rating,
-                            total_ratings=item.total_ratings,
-                            is_popular=item.is_popular,
-                            is_recommended=item.is_recommended,
-                            nutrition_info=item.nutrition_info,
-                            preparation_time=item.preparation_time,
-                            category=category.name
-                        )
-                        menu_items.append(menu_item)
-                        total_items += 1
-                    
-                    # Create category response
-                    menu_category = MenuCategoryResponse(
-                        category_id=category.category_id,
-                        name=category.name,
-                        description=category.description,
-                        image=category.image,
-                        is_active=category.is_active,
-                        sort_order=category.sort_order,
-                        items=menu_items
-                    )
-                    menu_categories.append(menu_category)
-            
-            # Create menu response
-            menu_data = RestaurantMenuResponse(
-                categories=menu_categories,
-                total_items=total_items
-            )
-        
-        # Build restaurant response
-        restaurant_dict = {
-            'restaurant_id': restaurant.restaurant_id,
-            'name': restaurant.name,
-            'description': restaurant.description,
-            'cuisine_type': restaurant.cuisine_type,
-            'image': restaurant.image,
-            'cover_image': restaurant.cover_image,
-            'rating': restaurant.rating,
-            'total_ratings': restaurant.total_ratings,
-            'avg_delivery_time': restaurant.avg_delivery_time,
-            'delivery_fee': restaurant.delivery_fee,
-            'min_order_amount': restaurant.min_order_amount,
-            'cost_for_two': restaurant.cost_for_two,
-            'platform_fee': restaurant.platform_fee,
-            'status': restaurant.status,
-            'is_open': currently_open,
-            'is_veg': restaurant.is_veg,
-            'is_pure_veg': restaurant.is_pure_veg,
-            'opening_time': restaurant.opening_time,
-            'closing_time': restaurant.closing_time,
-            'location': location,
-            'offers': offer_responses,
-            'phone': restaurant.phone,
-            'email': restaurant.email,
-            'created_at': restaurant.created_at,
-            'updated_at': restaurant.updated_at,
-            'menu': menu_data
-        }
-        
-        restaurant_response = RestaurantDetailResponse(**restaurant_dict)
-        
-        logger.info(f"Restaurant details retrieved successfully for: {restaurant.name}")
-        
-        return CommonResponse(
-            code=200,
-            message="Restaurant details retrieved successfully",
-            message_id="RESTAURANT_DETAILS_SUCCESS",
-            data=restaurant_response
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching restaurant details: {str(e)}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch restaurant details: {str(e)}"
-        )
-
-
 @router.get("/search", response_model=CommonResponse[dict])
 async def unified_search(
     query: str = Query(..., min_length=1, description="Search query"),
@@ -862,81 +668,195 @@ async def unified_search(
         )
 
 
-def _calculate_restaurant_relevance(restaurant: Restaurant, query: str) -> float:
-    """Calculate relevance score for restaurant search results."""
-    query_lower = query.lower()
-    score = 0.0
+@router.get("/{restaurant_id}", response_model=CommonResponse[RestaurantDetailResponse])
+async def get_restaurant_by_id(
+    restaurant_id: str,
+    include_menu: bool = Query(False, description="Include menu items"),
+    include_reviews: bool = Query(False, description="Include reviews"),
+    include_offers: bool = Query(True, description="Include active offers"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """
+    Get restaurant details by ID.
     
-    # Name match (highest weight)
-    if query_lower in restaurant.name.lower():
-        score += 10.0
-        if restaurant.name.lower().startswith(query_lower):
-            score += 5.0  # Bonus for prefix match
+    This endpoint returns detailed information about a specific restaurant,
+    including contact information, location, offers, and optionally menu items and reviews.
+    """
+    try:
+        logger.info(f"Fetching restaurant details for ID: {restaurant_id}")
+        
+        # Get restaurant from database
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.restaurant_id == restaurant_id,
+            Restaurant.status == 'active'
+        ).first()
+        
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurant not found"
+            )
+        
+        # Check if restaurant is currently open
+        currently_open = is_restaurant_currently_open(restaurant)
+        
+        # Build location response
+        location = RestaurantLocationResponse(
+            address_line1=restaurant.address_line1,
+            address_line2=restaurant.address_line2,
+            city=restaurant.city,
+            state=restaurant.state,
+            postal_code=restaurant.postal_code,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude
+        )
+        
+        # Fetch active offers if requested
+        offers = []
+        if include_offers:
+            offers = db.query(RestaurantOffer).filter(
+                RestaurantOffer.restaurant_id == restaurant.restaurant_id,
+                RestaurantOffer.is_active == True,
+                RestaurantOffer.valid_from <= datetime.now(timezone.utc),
+                RestaurantOffer.valid_until >= datetime.now(timezone.utc)
+            ).all()
+        
+        # Build offer responses
+        offer_responses = [
+            RestaurantOfferResponse(
+                offer_id=offer.offer_id,
+                title=offer.title,
+                description=offer.description,
+                discount_type=offer.discount_type,
+                discount_value=offer.discount_value,
+                min_order_amount=offer.min_order_amount,
+                max_discount_amount=offer.max_discount_amount,
+                valid_from=offer.valid_from,
+                valid_until=offer.valid_until,
+                is_active=offer.is_active
+            ) for offer in offers
+        ]
+        
+        # Fetch menu data if requested
+        menu_data = None
+        if include_menu:
+            # Get all food items for this restaurant
+            food_items = db.query(FoodItem).filter(
+                FoodItem.restaurant_id == restaurant.restaurant_id,
+                FoodItem.status == 'available'
+            ).order_by(FoodItem.sort_order, FoodItem.name).all()
+            
+            # Get all categories for this restaurant
+            category_ids = list(set([item.category_id for item in food_items if item.category_id]))
+            categories = db.query(Category).filter(
+                Category.category_id.in_(category_ids),
+                Category.is_active == True
+            ).order_by(Category.sort_order, Category.name).all()
+            
+            # Create category map for quick lookup
+            category_map = {cat.category_id: cat for cat in categories}
+            
+            # Group food items by category
+            menu_categories = []
+            total_items = 0
+            
+            for category in categories:
+                category_items = [item for item in food_items if item.category_id == category.category_id]
+                if category_items:  # Only include categories that have items
+                    # Transform food items to response format
+                    menu_items = []
+                    for item in category_items:
+                        menu_item = MenuItemResponse(
+                            food_item_id=item.food_item_id,
+                            name=item.name,
+                            description=item.description,
+                            price=item.price,
+                            discount_price=item.discount_price,
+                            image=item.image,
+                            is_veg=item.is_veg,
+                            ingredients=item.ingredients,
+                            allergens=item.allergens,
+                            calories=item.calories,
+                            prep_time=item.prep_time,
+                            status=item.status,
+                            rating=item.rating,
+                            total_ratings=item.total_ratings,
+                            is_popular=item.is_popular,
+                            is_recommended=item.is_recommended,
+                            nutrition_info=item.nutrition_info,
+                            preparation_time=item.preparation_time,
+                            category=category.name
+                        )
+                        menu_items.append(menu_item)
+                        total_items += 1
+                    
+                    # Create category response
+                    menu_category = MenuCategoryResponse(
+                        category_id=category.category_id,
+                        name=category.name,
+                        description=category.description,
+                        image=category.image,
+                        is_active=category.is_active,
+                        sort_order=category.sort_order,
+                        items=menu_items
+                    )
+                    menu_categories.append(menu_category)
+            
+            # Create menu response
+            menu_data = RestaurantMenuResponse(
+                categories=menu_categories,
+                total_items=total_items
+            )
+        
+        # Build restaurant response
+        restaurant_dict = {
+            'restaurant_id': restaurant.restaurant_id,
+            'name': restaurant.name,
+            'description': restaurant.description,
+            'cuisine_type': restaurant.cuisine_type,
+            'image': restaurant.image,
+            'cover_image': restaurant.cover_image,
+            'rating': restaurant.rating,
+            'total_ratings': restaurant.total_ratings,
+            'avg_delivery_time': restaurant.avg_delivery_time,
+            'delivery_fee': restaurant.delivery_fee,
+            'min_order_amount': restaurant.min_order_amount,
+            'cost_for_two': restaurant.cost_for_two,
+            'platform_fee': restaurant.platform_fee,
+            'status': restaurant.status,
+            'is_open': currently_open,
+            'is_veg': restaurant.is_veg,
+            'is_pure_veg': restaurant.is_pure_veg,
+            'opening_time': restaurant.opening_time,
+            'closing_time': restaurant.closing_time,
+            'location': location,
+            'offers': offer_responses,
+            'phone': restaurant.phone,
+            'email': restaurant.email,
+            'created_at': restaurant.created_at,
+            'updated_at': restaurant.updated_at,
+            'menu': menu_data
+        }
+        
+        restaurant_response = RestaurantDetailResponse(**restaurant_dict)
+        
+        logger.info(f"Restaurant details retrieved successfully for: {restaurant.name}")
+        
+        return CommonResponse(
+            code=200,
+            message="Restaurant details retrieved successfully",
+            message_id="RESTAURANT_DETAILS_SUCCESS",
+            data=restaurant_response
+        )
     
-    # Description match
-    if restaurant.description and query_lower in restaurant.description.lower():
-        score += 3.0
-    
-    # Cuisine type match
-    if restaurant.cuisine_type and query_lower in restaurant.cuisine_type.lower():
-        score += 2.0
-    
-    # Rating bonus
-    if restaurant.rating:
-        score += float(restaurant.rating) * 0.5
-    
-    # Popularity bonus
-    if restaurant.total_ratings and restaurant.total_ratings > 100:
-        score += 1.0
-    
-    return score
-
-
-def _calculate_dish_relevance(dish: FoodItem, query: str) -> float:
-    """Calculate relevance score for dish search results."""
-    query_lower = query.lower()
-    score = 0.0
-    
-    # Name match (highest weight)
-    if query_lower in dish.name.lower():
-        score += 10.0
-        if dish.name.lower().startswith(query_lower):
-            score += 5.0  # Bonus for prefix match
-    
-    # Description match
-    if dish.description and query_lower in dish.description.lower():
-        score += 3.0
-    
-    # Ingredients match
-    if dish.ingredients and query_lower in dish.ingredients.lower():
-        score += 2.0
-    
-    # Rating bonus
-    if dish.rating:
-        score += float(dish.rating) * 0.5
-    
-    # Popularity bonus
-    if dish.is_popular:
-        score += 2.0
-    if dish.is_recommended:
-        score += 1.0
-    
-    return score
-
-
-def _calculate_category_relevance(category: Category, query: str) -> float:
-    """Calculate relevance score for category search results."""
-    query_lower = query.lower()
-    score = 0.0
-    
-    # Name match (highest weight)
-    if query_lower in category.name.lower():
-        score += 10.0
-        if category.name.lower().startswith(query_lower):
-            score += 5.0  # Bonus for prefix match
-    
-    # Description match
-    if category.description and query_lower in category.description.lower():
-        score += 3.0
-    
-    return score
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching restaurant details: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch restaurant details: {str(e)}"
+        )
