@@ -860,3 +860,83 @@ async def get_restaurant_by_id(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch restaurant details: {str(e)}"
         )
+
+
+def _calculate_restaurant_relevance(restaurant: Restaurant, query: str) -> float:
+    """Calculate relevance score for restaurant search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in restaurant.name.lower():
+        score += 10.0
+        if restaurant.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if restaurant.description and query_lower in restaurant.description.lower():
+        score += 3.0
+    
+    # Cuisine type match
+    if restaurant.cuisine_type and query_lower in restaurant.cuisine_type.lower():
+        score += 2.0
+    
+    # Rating bonus
+    if restaurant.rating:
+        score += float(restaurant.rating) * 0.5
+    
+    # Popularity bonus
+    if restaurant.total_ratings and restaurant.total_ratings > 100:
+        score += 1.0
+    
+    return score
+
+
+def _calculate_dish_relevance(dish: FoodItem, query: str) -> float:
+    """Calculate relevance score for dish search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in dish.name.lower():
+        score += 10.0
+        if dish.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if dish.description and query_lower in dish.description.lower():
+        score += 3.0
+    
+    # Ingredients match
+    if dish.ingredients and query_lower in dish.ingredients.lower():
+        score += 2.0
+    
+    # Rating bonus
+    if dish.rating:
+        score += float(dish.rating) * 0.5
+    
+    # Popularity bonus
+    if dish.is_popular:
+        score += 2.0
+    if dish.is_recommended:
+        score += 1.0
+    
+    return score
+
+
+def _calculate_category_relevance(category: Category, query: str) -> float:
+    """Calculate relevance score for category search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in category.name.lower():
+        score += 10.0
+        if category.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if category.description and query_lower in category.description.lower():
+        score += 3.0
+    
+    return score
