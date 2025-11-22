@@ -629,19 +629,6 @@ async def unified_search(
         # Apply limit
         limited_results = all_results[:limit]
         
-        # Get total count
-        total_count = len(all_results)
-        
-        # Check if there are more results
-        has_more = total_count > limit
-        
-        logger.info(f"Search completed. Found {total_count} results, returning {len(limited_results)}")
-        
-        return CommonResponse(
-            code=200,
-            message=f"Search completed successfully. Found {total_count} results",
-            message_id="UNIFIED_SEARCH_SUCCESS",
-            data={
                 'results': limited_results,
                 'total_count': total_count,
                 'has_more': has_more,
