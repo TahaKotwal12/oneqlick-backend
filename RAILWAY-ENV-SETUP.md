@@ -34,7 +34,7 @@ Make sure these are set in Railway Variables:
 - `JWT_SECRET_KEY` - Your JWT secret key
 
 **Email Service (SendGrid - Recommended):**
-- `SENDGRID_API_KEY=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`
+- `SENDGRID_API_KEY=your_sendgrid_api_key_here`
 - `SENDGRID_FROM_EMAIL=noreply@oneqlick.com`
 
 **Email Service (SMTP - Not Recommended for Railway):**
@@ -45,8 +45,8 @@ Make sure these are set in Railway Variables:
 - `SMTP_USE_TLS=true`
 
 **SMS Service (if using):**
-- `TWILIO_ACCOUNT_SID=AC435aaf3b919674dc8fd91bce2edfc5e6`
-- `TWILIO_AUTH_TOKEN=06bd88b2225235b37d9c312a25333c21`
+- `TWILIO_ACCOUNT_SID=your_twilio_account_sid_here`
+- `TWILIO_AUTH_TOKEN=your_twilio_auth_token_here`
 - `TWILIO_PHONE_NUMBER=+14342265098`
 
 **Other:**

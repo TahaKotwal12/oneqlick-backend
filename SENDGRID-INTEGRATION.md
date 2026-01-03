@@ -12,7 +12,7 @@
 - Added `sendgrid==6.11.0`
 
 ### 3. ✅ Updated `.env` file
-- Added `SENDGRID_API_KEY=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`
+- Added `SENDGRID_API_KEY=your_sendgrid_api_key_here`
 - Added `SENDGRID_FROM_EMAIL=noreply@oneqlick.com`
 - Kept SMTP as fallback
 
@@ -46,7 +46,7 @@
 
 2. **Add to Railway environment variables:**
    ```
-   SENDGRID_API_KEY=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
+   SENDGRID_API_KEY=your_sendgrid_api_key_here
    SENDGRID_FROM_EMAIL=noreply@oneqlick.com
    ```
 
