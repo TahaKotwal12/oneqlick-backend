@@ -1,6 +1,7 @@
 from fastapi import FastAPI, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from app.api.exception import EngageFatalException, EngageNonFatalException
 from app.api.schemas.common_schemas import CommonResponse
@@ -8,6 +9,7 @@ from app.config.logger import get_logger
 from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
 from app.api.routes import auth, user, restaurant, food_items, search, coupons
+from app.config.config import CORS_ORIGINS, CORS_METHODS, CORS_HEADERS
 # Import models to ensure they are registered with SQLAlchemy
 from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer
 # Import batch cleanup worker
@@ -16,6 +18,16 @@ import logging
 
 APP_TITLE = "OneQlick Backend"
 app = FastAPI(title=APP_TITLE)
+
+# Configure CORS middleware to allow requests from mobile app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for now - restrict in production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"]  # Expose all headers
+)
 
 # Include API routes
 app.include_router(auth.router, prefix="/api/v1")
