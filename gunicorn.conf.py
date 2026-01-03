@@ -21,7 +21,7 @@ worker_class = 'uvicorn.workers.UvicornWorker'
 worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 50
-timeout = 120
+timeout = 300  # Increased from 120 to 300 for email sending
 keepalive = 5
 
 # ============================================

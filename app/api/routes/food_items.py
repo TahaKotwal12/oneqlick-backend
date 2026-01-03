@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from uuid import UUID
+from datetime import datetime, timezone
 
 from app.infra.db.postgres.postgres_config import get_db
 from app.api.dependencies import get_optional_current_user
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.food_item import FoodItem
 from app.infra.db.postgres.models.restaurant import Restaurant
+from app.infra.db.postgres.models.restaurant_offer import RestaurantOffer
 from app.infra.db.postgres.models.category import Category
 from app.infra.db.postgres.models.user import User
 from app.config.logger import get_logger
@@ -77,6 +79,30 @@ async def get_food_item_by_id(
             ).first()
             
             if restaurant:
+                # Fetch active offers for this restaurant
+                offers = db.query(RestaurantOffer).filter(
+                    RestaurantOffer.restaurant_id == restaurant.restaurant_id,
+                    RestaurantOffer.is_active == True,
+                    RestaurantOffer.valid_from <= datetime.now(timezone.utc),
+                    RestaurantOffer.valid_until >= datetime.now(timezone.utc)
+                ).all()
+                
+                # Build offer responses
+                offer_responses = [
+                    {
+                        'offer_id': str(offer.offer_id),
+                        'title': offer.title,
+                        'description': offer.description,
+                        'discount_type': offer.discount_type,
+                        'discount_value': float(offer.discount_value),
+                        'min_order_amount': float(offer.min_order_amount) if offer.min_order_amount else None,
+                        'max_discount_amount': float(offer.max_discount_amount) if offer.max_discount_amount else None,
+                        'valid_from': offer.valid_from.isoformat(),
+                        'valid_until': offer.valid_until.isoformat(),
+                        'is_active': offer.is_active
+                    } for offer in offers
+                ]
+                
                 food_item_data['restaurant'] = {
                     'restaurant_id': restaurant.restaurant_id,
                     'name': restaurant.name,
@@ -99,7 +125,8 @@ async def get_food_item_by_id(
                     'state': restaurant.state,
                     'postal_code': restaurant.postal_code,
                     'latitude': float(restaurant.latitude),
-                    'longitude': float(restaurant.longitude)
+                    'longitude': float(restaurant.longitude),
+                    'offers': offer_responses  # Add offers here
                 }
         
         # Include category details
