@@ -1,0 +1,241 @@
+from pydantic import BaseModel, Field, validator
+from typing import Optional, List
+from datetime import datetime
+from decimal import Decimal
+from uuid import UUID
+from app.utils.enums import CouponType
+
+
+# Request Schemas
+class ValidateCouponRequest(BaseModel):
+    """Request schema for validating a coupon."""
+    coupon_code: str = Field(..., description="Coupon code to validate")
+    cart_total: Decimal = Field(..., gt=0, description="Cart subtotal amount")
+    restaurant_id: Optional[UUID] = Field(None, description="Restaurant ID if applicable")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "coupon_code": "SAVE20",
+                "cart_total": 360.00,
+                "restaurant_id": "123e4567-e89b-12d3-a456-426614174000"
+            }
+        }
+
+
+class ApplyCouponRequest(BaseModel):
+    """Request schema for applying a coupon to cart."""
+    coupon_code: str = Field(..., description="Coupon code to apply")
+    cart_total: Decimal = Field(..., gt=0, description="Cart subtotal amount")
+    restaurant_id: Optional[UUID] = Field(None, description="Restaurant ID")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "coupon_code": "SAVE20",
+                "cart_total": 360.00,
+                "restaurant_id": "123e4567-e89b-12d3-a456-426614174000"
+            }
+        }
+
+
+# Response Schemas
+class CouponResponse(BaseModel):
+    """Response schema for a single coupon."""
+    coupon_id: UUID
+    code: str
+    title: str
+    description: Optional[str]
+    coupon_type: CouponType
+    discount_value: Decimal
+    min_order_amount: Decimal
+    max_discount_amount: Optional[Decimal]
+    usage_limit: Optional[int]
+    used_count: int
+    valid_from: datetime
+    valid_until: datetime
+    is_active: bool
+    created_at: datetime
+    
+    # Computed fields
+    is_expired: bool = Field(default=False, description="Whether coupon has expired")
+    is_available: bool = Field(default=True, description="Whether coupon is available for use")
+    usage_remaining: Optional[int] = Field(None, description="Remaining usage count")
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "coupon_id": "123e4567-e89b-12d3-a456-426614174000",
+                "code": "SAVE20",
+                "title": "Save 20% on orders above ₹300",
+                "description": "Get 20% discount on your order",
+                "coupon_type": "percentage",
+                "discount_value": 20.00,
+                "min_order_amount": 300.00,
+                "max_discount_amount": 100.00,
+                "usage_limit": 1000,
+                "used_count": 245,
+                "valid_from": "2026-01-01T00:00:00Z",
+                "valid_until": "2026-01-31T23:59:59Z",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00Z",
+                "is_expired": False,
+                "is_available": True,
+                "usage_remaining": 755
+            }
+        }
+
+
+class CouponListResponse(BaseModel):
+    """Response schema for list of coupons."""
+    coupons: List[CouponResponse]
+    total_count: int
+    available_count: int = Field(description="Number of coupons user can use")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "coupons": [],
+                "total_count": 5,
+                "available_count": 3
+            }
+        }
+
+
+class ValidateCouponResponse(BaseModel):
+    """Response schema for coupon validation."""
+    is_valid: bool
+    coupon: Optional[CouponResponse] = None
+    discount_amount: Decimal = Field(default=0, description="Calculated discount amount")
+    final_amount: Decimal = Field(description="Final amount after discount")
+    error_message: Optional[str] = Field(None, description="Error message if invalid")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "is_valid": True,
+                "coupon": {
+                    "code": "SAVE20",
+                    "title": "Save 20% on orders above ₹300",
+                    "coupon_type": "percentage",
+                    "discount_value": 20.00
+                },
+                "discount_amount": 72.00,
+                "final_amount": 288.00,
+                "error_message": None
+            }
+        }
+
+
+class ApplyCouponResponse(BaseModel):
+    """Response schema for applying coupon."""
+    success: bool
+    message: str
+    coupon_code: str
+    discount_amount: Decimal
+    final_amount: Decimal
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "Coupon applied successfully",
+                "coupon_code": "SAVE20",
+                "discount_amount": 72.00,
+                "final_amount": 288.00
+            }
+        }
+
+
+class RestaurantOfferResponse(BaseModel):
+    """Response schema for restaurant offer."""
+    offer_id: UUID
+    restaurant_id: UUID
+    title: str
+    description: Optional[str]
+    discount_type: str  # 'percentage', 'fixed_amount', 'free_delivery'
+    discount_value: Decimal
+    min_order_amount: Optional[Decimal]
+    max_discount_amount: Optional[Decimal]
+    valid_from: datetime
+    valid_until: datetime
+    is_active: bool
+    created_at: datetime
+    
+    # Computed fields
+    is_expired: bool = Field(default=False, description="Whether offer has expired")
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "offer_id": "123e4567-e89b-12d3-a456-426614174000",
+                "restaurant_id": "123e4567-e89b-12d3-a456-426614174001",
+                "title": "Free Delivery on orders above ₹200",
+                "description": "Get free delivery",
+                "discount_type": "free_delivery",
+                "discount_value": 0.00,
+                "min_order_amount": 200.00,
+                "max_discount_amount": None,
+                "valid_from": "2026-01-01T00:00:00Z",
+                "valid_until": "2026-01-31T23:59:59Z",
+                "is_active": True,
+                "created_at": "2026-01-01T00:00:00Z",
+                "is_expired": False
+            }
+        }
+
+
+class OffersListResponse(BaseModel):
+    """Response schema for list of offers."""
+    offers: List[RestaurantOfferResponse]
+    total_count: int
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "offers": [],
+                "total_count": 3
+            }
+        }
+
+
+class CouponUsageResponse(BaseModel):
+    """Response schema for coupon usage history."""
+    user_coupon_usage_id: UUID
+    coupon_code: str
+    coupon_title: str
+    order_id: UUID
+    order_number: str
+    discount_amount: Decimal
+    used_at: datetime
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "user_coupon_usage_id": "123e4567-e89b-12d3-a456-426614174000",
+                "coupon_code": "SAVE20",
+                "coupon_title": "Save 20% on orders above ₹300",
+                "order_id": "123e4567-e89b-12d3-a456-426614174001",
+                "order_number": "OQ20260103001",
+                "discount_amount": 72.00,
+                "used_at": "2026-01-03T12:00:00Z"
+            }
+        }
+
+
+class CouponUsageListResponse(BaseModel):
+    """Response schema for coupon usage history list."""
+    usage_history: List[CouponUsageResponse]
+    total_count: int
+    total_savings: Decimal = Field(description="Total amount saved using coupons")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "usage_history": [],
+                "total_count": 5,
+                "total_savings": 350.00
+            }
+        }

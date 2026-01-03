@@ -7,7 +7,7 @@ from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
 from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
-from app.api.routes import auth, user, restaurant, food_items, search
+from app.api.routes import auth, user, restaurant, food_items, search, coupons
 # Import models to ensure they are registered with SQLAlchemy
 from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer
 # Import batch cleanup worker
@@ -23,6 +23,7 @@ app.include_router(user.router, prefix="/api/v1")
 app.include_router(restaurant.router, prefix="/api/v1")
 app.include_router(food_items.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
+app.include_router(coupons.router, prefix="/api/v1")
 
 # Initialize Redis connection
 try:
@@ -101,7 +102,7 @@ async def health_check():
             redis_repo._redis_client.ping()
             health_status["redis"] = "connected"
         else:
-            health_status["redis"] = "not_configured"
+            health_status["redis"] = "not_setuped"
     except Exception as e:
         health_status["redis"] = f"error: {str(e)}"
     
