@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Integer
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -15,4 +15,5 @@ class Category(Base):
     image = Column(String(500))
     is_active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
+    search_vector = Column(TSVECTOR)  # For full-text search
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)

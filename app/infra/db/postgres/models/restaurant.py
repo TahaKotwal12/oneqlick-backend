@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Integer, Time
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -38,5 +38,6 @@ class Restaurant(Base):
     is_pure_veg = Column(Boolean, default=False)
     cost_for_two = Column(DECIMAL(10, 2))
     platform_fee = Column(DECIMAL(10, 2), default=5)
+    search_vector = Column(TSVECTOR)  # For full-text search
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
