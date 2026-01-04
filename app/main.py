@@ -11,7 +11,7 @@ from app.infra.redis.repositories.redis_repositories import RedisRepository
 from app.api.routes import auth, user, restaurant, food_items, search, coupons, partner_restaurant
 from app.config.config import CORS_ORIGINS, CORS_METHODS, CORS_HEADERS
 # Import models to ensure they are registered with SQLAlchemy
-from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer
+from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer, search as search_model
 # Import batch cleanup worker
 from app.workers.batch_cleanup_worker import start_batch_cleanup_worker, stop_batch_cleanup_worker, get_worker_status
 import logging
