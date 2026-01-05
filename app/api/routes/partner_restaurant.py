@@ -220,6 +220,7 @@ async def update_restaurant_profile(
     """
     try:
         logger.info(f"Updating restaurant profile for owner: {current_user.user_id}")
+        logger.info(f"Request data: {request.dict()}")
         
         # Get restaurant owned by this user
         restaurant = db.query(Restaurant).filter(
@@ -232,19 +233,28 @@ async def update_restaurant_profile(
                 detail="No restaurant found for this user"
             )
         
+        logger.info(f"Found restaurant: {restaurant.restaurant_id}, current name: {restaurant.name}")
+        
         # Update fields if provided
         update_data = request.dict(exclude_unset=True)
+        logger.info(f"Update data (exclude_unset): {update_data}")
         
+        updated_fields = []
         for field, value in update_data.items():
             if hasattr(restaurant, field) and value is not None:
+                old_value = getattr(restaurant, field)
                 setattr(restaurant, field, value)
+                updated_fields.append(f"{field}: {old_value} -> {value}")
+        
+        logger.info(f"Updated fields: {updated_fields}")
         
         restaurant.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(restaurant)
         
-        logger.info(f"Restaurant profile updated: {restaurant.restaurant_id}")
+        logger.info(f"Restaurant profile updated successfully: {restaurant.restaurant_id}")
+        logger.info(f"New name after commit: {restaurant.name}")
         
         # Return updated profile
         return await get_restaurant_profile(current_user, db)

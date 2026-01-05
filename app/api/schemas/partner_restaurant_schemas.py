@@ -241,6 +241,18 @@ class UpdateRestaurantProfileRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     phone: Optional[str] = Field(None, min_length=10, max_length=20)
+    email: Optional[str] = Field(None, max_length=255)
+    address_line1: Optional[str] = Field(None, max_length=255)
+    address_line2: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=20)
+    latitude: Optional[float] = Field(None, ge=-90, le=90, description="Latitude coordinate")
+    longitude: Optional[float] = Field(None, ge=-180, le=180, description="Longitude coordinate")
+    cuisine_type: Optional[str] = Field(None, max_length=100)
+    avg_delivery_time: Optional[int] = Field(None, ge=0)
+    min_order_amount: Optional[float] = Field(None, ge=0)
+    delivery_fee: Optional[float] = Field(None, ge=0)
     is_open: Optional[bool] = None
     opening_time: Optional[str] = None  # Format: "HH:MM"
     closing_time: Optional[str] = None  # Format: "HH:MM"
