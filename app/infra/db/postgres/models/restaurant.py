@@ -10,7 +10,7 @@ class Restaurant(Base):
     __tablename__ = 'core_mstr_one_qlick_restaurants_tbl'
 
     restaurant_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl(user_id)'))
+    owner_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id'))
     name = Column(String(255), nullable=False)
     description = Column(String)
     phone = Column(String(20), nullable=False)

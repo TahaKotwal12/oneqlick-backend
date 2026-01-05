@@ -193,6 +193,18 @@ async def signup(
         # Hash password
         hashed_password = AuthUtils.hash_password(request.password)
         
+        # Extract partner-specific data from additional_data
+        restaurant_name = None
+        cuisine_type = None
+        vehicle_type = None
+        license_number = None
+        
+        if request.additional_data:
+            restaurant_name = request.additional_data.get('restaurant_name')
+            cuisine_type = request.additional_data.get('cuisine_type')
+            vehicle_type = request.additional_data.get('vehicle_type')
+            license_number = request.additional_data.get('license_number')
+        
         # Create pending user (not in main users table yet) if not already exists
         if not pending_user:
             pending_user = PendingUserUtils.create_pending_user(
@@ -202,7 +214,11 @@ async def signup(
                 email=request.email,
                 phone=request.phone,
                 password_hash=hashed_password,
-                role=UserRole.CUSTOMER.value
+                role=request.role or UserRole.CUSTOMER.value,
+                restaurant_name=restaurant_name,
+                cuisine_type=cuisine_type,
+                vehicle_type=vehicle_type,
+                license_number=license_number
             )
         
         # Ensure pending_user is defined before proceeding

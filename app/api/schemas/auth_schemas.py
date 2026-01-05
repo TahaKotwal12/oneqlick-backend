@@ -27,6 +27,8 @@ class SignupRequest(BaseModel):
     email: EmailStr
     phone: str = Field(..., min_length=10, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
+    role: Optional[str] = Field(default="customer", pattern="^(customer|restaurant_owner|delivery_partner|admin)$")
+    additional_data: Optional[Dict[str, Any]] = None
 
 class GoogleSigninRequest(BaseModel):
     id_token: str

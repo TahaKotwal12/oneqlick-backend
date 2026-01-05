@@ -34,6 +34,305 @@ logger = get_logger(__name__)
 
 
 # ============================================================================
+# RESTAURANT PROFILE MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@router.get("/profile", response_model=CommonResponse[RestaurantProfileResponse])
+async def get_restaurant_profile(
+    current_user: User = Depends(require_restaurant_owner),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the restaurant profile for the authenticated owner.
+    """
+    try:
+        logger.info(f"Fetching restaurant profile for owner: {current_user.user_id}")
+        
+        # Get restaurant owned by this user
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.owner_id == current_user.user_id
+        ).first()
+        
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No restaurant found for this user"
+            )
+        
+        # Build response
+        profile_response = RestaurantProfileResponse(
+            restaurant_id=restaurant.restaurant_id,
+            name=restaurant.name,
+            description=restaurant.description,
+            phone=restaurant.phone,
+            email=restaurant.email,
+            address_line1=restaurant.address_line1,
+            address_line2=restaurant.address_line2,
+            city=restaurant.city,
+            state=restaurant.state,
+            postal_code=restaurant.postal_code,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude,
+            image=restaurant.image,
+            cover_image=restaurant.cover_image,
+            cuisine_type=restaurant.cuisine_type,
+            avg_delivery_time=restaurant.avg_delivery_time,
+            min_order_amount=restaurant.min_order_amount,
+            delivery_fee=restaurant.delivery_fee,
+            rating=restaurant.rating,
+            total_ratings=restaurant.total_ratings,
+            status=restaurant.status,
+            is_open=restaurant.is_open,
+            opening_time=restaurant.opening_time.strftime("%H:%M:%S") if restaurant.opening_time else None,
+            closing_time=restaurant.closing_time.strftime("%H:%M:%S") if restaurant.closing_time else None,
+            created_at=restaurant.created_at,
+            updated_at=restaurant.updated_at
+        )
+        
+        return CommonResponse(
+            code=200,
+            message="Restaurant profile retrieved successfully",
+            message_id="PROFILE_RETRIEVED",
+            data=profile_response
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching restaurant profile: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch restaurant profile: {str(e)}"
+        )
+
+
+@router.post("/profile", response_model=CommonResponse[RestaurantProfileResponse])
+async def create_restaurant_profile(
+    request: UpdateRestaurantProfileRequest,
+    current_user: User = Depends(require_restaurant_owner),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new restaurant profile for the authenticated owner.
+    """
+    try:
+        logger.info(f"Creating restaurant profile for owner: {current_user.user_id}")
+        
+        # Check if restaurant already exists
+        existing_restaurant = db.query(Restaurant).filter(
+            Restaurant.owner_id == current_user.user_id
+        ).first()
+        
+        if existing_restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Restaurant already exists for this user"
+            )
+        
+        # Create new restaurant
+        from datetime import time
+        
+        # Parse opening and closing times if provided
+        opening_time = None
+        closing_time = None
+        
+        if hasattr(request, 'opening_time') and request.opening_time:
+            time_parts = request.opening_time.split(':')
+            opening_time = time(
+                hour=int(time_parts[0]),
+                minute=int(time_parts[1]),
+                second=int(time_parts[2]) if len(time_parts) > 2 else 0
+            )
+        
+        if hasattr(request, 'closing_time') and request.closing_time:
+            time_parts = request.closing_time.split(':')
+            closing_time = time(
+                hour=int(time_parts[0]),
+                minute=int(time_parts[1]),
+                second=int(time_parts[2]) if len(time_parts) > 2 else 0
+            )
+        
+        new_restaurant = Restaurant(
+            owner_id=current_user.user_id,
+            name=request.name,
+            description=request.description,
+            phone=request.phone,
+            email=request.email,
+            address_line1=request.address_line1,
+            address_line2=request.address_line2,
+            city=request.city,
+            state=request.state,
+            postal_code=request.postal_code,
+            latitude=request.latitude or 0.0,
+            longitude=request.longitude or 0.0,
+            image=request.image,
+            cover_image=request.cover_image,
+            cuisine_type=request.cuisine_type,
+            avg_delivery_time=request.avg_delivery_time or 30,
+            min_order_amount=request.min_order_amount or 100.0,
+            delivery_fee=request.delivery_fee or 40.0,
+            rating=0.0,
+            total_ratings=0,
+            status='active',
+            is_open=True,
+            opening_time=opening_time,
+            closing_time=closing_time,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        
+        db.add(new_restaurant)
+        db.commit()
+        db.refresh(new_restaurant)
+        
+        logger.info(f"Restaurant created successfully: {new_restaurant.restaurant_id}")
+        
+        # Return the created restaurant
+        return await get_restaurant_profile(current_user, db)
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid data format: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error creating restaurant profile: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create restaurant profile: {str(e)}"
+        )
+
+
+@router.put("/profile", response_model=CommonResponse[RestaurantProfileResponse])
+async def update_restaurant_profile(
+    request: UpdateRestaurantProfileRequest,
+    current_user: User = Depends(require_restaurant_owner),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the restaurant profile.
+    """
+    try:
+        logger.info(f"Updating restaurant profile for owner: {current_user.user_id}")
+        
+        # Get restaurant owned by this user
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.owner_id == current_user.user_id
+        ).first()
+        
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No restaurant found for this user"
+            )
+        
+        # Update fields if provided
+        update_data = request.dict(exclude_unset=True)
+        
+        for field, value in update_data.items():
+            if hasattr(restaurant, field) and value is not None:
+                setattr(restaurant, field, value)
+        
+        restaurant.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(restaurant)
+        
+        logger.info(f"Restaurant profile updated: {restaurant.restaurant_id}")
+        
+        # Return updated profile
+        return await get_restaurant_profile(current_user, db)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating restaurant profile: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update restaurant profile: {str(e)}"
+        )
+
+
+@router.put("/profile/operating-hours", response_model=CommonResponse[RestaurantProfileResponse])
+async def update_operating_hours(
+    request: UpdateOperatingHoursRequest,
+    current_user: User = Depends(require_restaurant_owner),
+    db: Session = Depends(get_db)
+):
+    """
+    Update restaurant operating hours.
+    """
+    try:
+        logger.info(f"Updating operating hours for owner: {current_user.user_id}")
+        
+        # Get restaurant owned by this user
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.owner_id == current_user.user_id
+        ).first()
+        
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No restaurant found for this user"
+            )
+        
+        # Update operating hours
+        from datetime import time
+        
+        if request.opening_time:
+            # Parse time string (HH:MM:SS or HH:MM)
+            time_parts = request.opening_time.split(':')
+            restaurant.opening_time = time(
+                hour=int(time_parts[0]),
+                minute=int(time_parts[1]),
+                second=int(time_parts[2]) if len(time_parts) > 2 else 0
+            )
+        
+        if request.closing_time:
+            time_parts = request.closing_time.split(':')
+            restaurant.closing_time = time(
+                hour=int(time_parts[0]),
+                minute=int(time_parts[1]),
+                second=int(time_parts[2]) if len(time_parts) > 2 else 0
+            )
+        
+        if request.is_open is not None:
+            restaurant.is_open = request.is_open
+        
+        restaurant.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(restaurant)
+        
+        logger.info(f"Operating hours updated for restaurant: {restaurant.restaurant_id}")
+        
+        # Return updated profile
+        return await get_restaurant_profile(current_user, db)
+    
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid time format: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error updating operating hours: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update operating hours: {str(e)}"
+        )
+
+
+# ============================================================================
 # ORDER MANAGEMENT ENDPOINTS
 # ============================================================================
 
