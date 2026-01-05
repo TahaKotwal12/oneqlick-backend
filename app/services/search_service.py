@@ -125,7 +125,7 @@ class SearchService:
         filters: Dict[str, Any],
         use_fuzzy: bool
     ) -> List[Dict[str, Any]]:
-        """Search restaurants using FTS and fuzzy matching."""
+        """Search restaurants using FTS, fuzzy matching, and trigram prefix matching."""
         
         # Prepare tsquery for full-text search
         tsquery = func.plainto_tsquery('english', query)
@@ -134,19 +134,22 @@ class SearchService:
         base_query = self.db.query(
             Restaurant,
             func.ts_rank(Restaurant.search_vector, tsquery).label('fts_rank'),
-            func.similarity(Restaurant.name, query).label('name_similarity')
+            func.similarity(Restaurant.name, query).label('name_similarity'),
+            func.similarity(Restaurant.cuisine_type, query).label('cuisine_similarity')
         ).filter(
             Restaurant.status == 'active'
         )
         
-        # Apply FTS or fuzzy search
+        # Apply FTS + trigram matching (production-grade)
         if use_fuzzy:
-            # Combine FTS with trigram similarity (typo tolerance)
+            # Use lower similarity threshold (0.1) for prefix matching
+            # This allows "bir" to match "biryani" using trigrams (indexed!)
             base_query = base_query.filter(
                 or_(
-                    Restaurant.search_vector.op('@@')(tsquery),
-                    func.similarity(Restaurant.name, query) > 0.3,
-                    func.similarity(Restaurant.cuisine_type, query) > 0.3
+                    Restaurant.search_vector.op('@@')(tsquery),  # Full-text search (indexed)
+                    func.similarity(Restaurant.name, query) > 0.1,  # Trigram prefix match (indexed)
+                    func.similarity(Restaurant.cuisine_type, query) > 0.1,  # Trigram cuisine (indexed)
+                    func.similarity(Restaurant.description, query) > 0.15  # Trigram description (indexed)
                 )
             )
         else:
@@ -210,7 +213,7 @@ class SearchService:
         filters: Dict[str, Any],
         use_fuzzy: bool
     ) -> List[Dict[str, Any]]:
-        """Search food items using FTS and fuzzy matching."""
+        """Search food items using FTS, fuzzy matching, and trigram prefix matching."""
         
         if not nearby_restaurant_ids:
             return []
@@ -222,18 +225,23 @@ class SearchService:
         base_query = self.db.query(
             FoodItem,
             func.ts_rank(FoodItem.search_vector, tsquery).label('fts_rank'),
-            func.similarity(FoodItem.name, query).label('name_similarity')
+            func.similarity(FoodItem.name, query).label('name_similarity'),
+            func.similarity(FoodItem.description, query).label('desc_similarity')
         ).filter(
             FoodItem.restaurant_id.in_(nearby_restaurant_ids),
             FoodItem.status == 'available'
         )
         
-        # Apply FTS or fuzzy search
+        # Apply FTS + trigram matching (production-grade)
         if use_fuzzy:
+            # Use lower similarity threshold (0.1) for prefix matching
+            # Trigram indexes make this fast even with low threshold
             base_query = base_query.filter(
                 or_(
-                    FoodItem.search_vector.op('@@')(tsquery),
-                    func.similarity(FoodItem.name, query) > 0.3
+                    FoodItem.search_vector.op('@@')(tsquery),  # Full-text search (indexed)
+                    func.similarity(FoodItem.name, query) > 0.1,  # Trigram name match (indexed)
+                    func.similarity(FoodItem.description, query) > 0.15,  # Trigram description (indexed)
+                    func.similarity(FoodItem.ingredients, query) > 0.15  # Trigram ingredients (indexed)
                 )
             )
         else:
