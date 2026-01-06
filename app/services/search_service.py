@@ -167,7 +167,7 @@ class SearchService:
         
         # Calculate distances and filter by radius
         results = []
-        for restaurant, fts_rank, name_similarity in restaurants:
+        for restaurant, fts_rank, name_similarity, cuisine_similarity in restaurants:
             distance = self._calculate_distance(
                 latitude, longitude,
                 float(restaurant.latitude), float(restaurant.longitude)
@@ -266,7 +266,7 @@ class SearchService:
         
         # Build results
         results = []
-        for dish, fts_rank, name_similarity in dishes:
+        for dish, fts_rank, name_similarity, desc_similarity in dishes:
             restaurant = restaurant_map.get(str(dish.restaurant_id))
             if restaurant:
                 # Calculate relevance (weight name similarity higher for dishes)
