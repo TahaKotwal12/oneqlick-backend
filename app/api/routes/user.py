@@ -523,6 +523,80 @@ async def get_all_users(
             detail="Failed to retrieve users"
         )
 
+@router.get("/admin/users/export")
+async def export_users(
+    role: Optional[UserRole] = Query(None),
+    status: Optional[UserStatus] = Query(None),
+    search: Optional[str] = Query(None),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Export users to CSV (admin only)"""
+    try:
+        query = db.query(User)
+        
+        # Apply filters
+        if role:
+            query = query.filter(User.role == role.value)
+        if status:
+            query = query.filter(User.status == status.value)
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                (User.first_name.ilike(search_term)) |
+                (User.last_name.ilike(search_term)) |
+                (User.email.ilike(search_term)) |
+                (User.phone.ilike(search_term))
+            )
+
+        users = query.order_by(User.created_at.desc()).all()
+
+        # Create CSV
+        import csv
+        import io
+        from fastapi.responses import StreamingResponse
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            "User ID", "First Name", "Last Name", "Email", "Phone", 
+            "Role", "Status", "Email Verified", "Phone Verified", 
+            "Loyalty Points", "Joined Date"
+        ])
+        
+        # Data
+        for user in users:
+            writer.writerow([
+                str(user.user_id),
+                user.first_name,
+                user.last_name,
+                user.email,
+                user.phone,
+                user.role,
+                user.status,
+                user.email_verified,
+                user.phone_verified,
+                user.loyalty_points,
+                user.created_at.isoformat() if user.created_at else ""
+            ])
+        
+        output.seek(0)
+        
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=users_export_{datetime.now().strftime('%Y%m%d')}.csv"}
+        )
+
+    except Exception as e:
+        logger.error(f"Error exporting users: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export users"
+        )
+
 @router.get("/admin/users/{user_id}", response_model=CommonResponse[UserResponse])
 async def get_user_by_id_admin(
     user_id: UUID,
