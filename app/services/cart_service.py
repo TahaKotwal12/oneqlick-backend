@@ -91,7 +91,8 @@ class CartService:
                 detail="Food item not found"
             )
         
-        if not food_item.is_available:
+        
+        if food_item.status != 'available':
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"{food_item.name} is currently unavailable"

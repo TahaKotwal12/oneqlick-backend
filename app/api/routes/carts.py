@@ -74,8 +74,9 @@ async def add_item_to_cart(
         cart_summary = CartService.get_cart_summary(db, cart)
         
         return CommonResponse(
-            success=True,
+            code=201,
             message="Item added to cart successfully",
+            message_id="CART_ITEM_ADDED",
             data=CartItemAddedResponse(
                 cart_id=cart.cart_id,
                 cart_item_id=cart_item.cart_item_id,
@@ -131,8 +132,9 @@ async def update_cart_item(
         message = "Item removed from cart" if request.quantity == 0 else "Cart updated successfully"
         
         return CommonResponse(
-            success=True,
+            code=200,
             message=message,
+            message_id="CART_UPDATED",
             data=cart_summary
         )
         
@@ -172,8 +174,9 @@ async def remove_cart_item(
         if not cart:
             # Cart might be empty now
             return CommonResponse(
-                success=True,
+                code=200,
                 message="Item removed from cart",
+                message_id="CART_ITEM_REMOVED",
                 data=CartSummaryResponse(
                     cart_id=cart.cart_id if cart else None,
                     item_count=0,
@@ -186,8 +189,9 @@ async def remove_cart_item(
         cart_summary = CartService.get_cart_summary(db, cart)
         
         return CommonResponse(
-            success=True,
+            code=200,
             message="Item removed from cart",
+            message_id="CART_ITEM_REMOVED",
             data=cart_summary
         )
         
@@ -221,8 +225,9 @@ async def get_cart(
         if not cart:
             # Return empty cart response
             return CommonResponse(
-                success=True,
+                code=200,
                 message="No active cart",
+                message_id="NO_CART",
                 data=None
             )
         
@@ -230,8 +235,9 @@ async def get_cart(
         cart_response = CartService.build_cart_response(db, cart)
         
         return CommonResponse(
-            success=True,
+            code=200,
             message="Cart retrieved successfully",
+            message_id="CART_RETRIEVED",
             data=cart_response
         )
         
@@ -262,8 +268,9 @@ async def clear_cart(
         
         if not cart:
             return CommonResponse(
-                success=True,
+                code=200,
                 message="No active cart to clear",
+                message_id="NO_CART",
                 data={"cart_id": None}
             )
         
@@ -271,8 +278,9 @@ async def clear_cart(
         CartService.clear_cart(db, cart.cart_id)
         
         return CommonResponse(
-            success=True,
+            code=200,
             message="Cart cleared successfully",
+            message_id="CART_CLEARED",
             data={"cart_id": str(cart.cart_id)}
         )
         
@@ -305,8 +313,9 @@ async def get_cart_summary(
         
         if not cart:
             return CommonResponse(
-                success=True,
+                code=200,
                 message="No active cart",
+                message_id="NO_CART",
                 data=None
             )
         
@@ -314,8 +323,9 @@ async def get_cart_summary(
         cart_summary = CartService.get_cart_summary(db, cart)
         
         return CommonResponse(
-            success=True,
+            code=200,
             message="Cart summary retrieved successfully",
+            message_id="CART_SUMMARY_RETRIEVED",
             data=cart_summary
         )
         

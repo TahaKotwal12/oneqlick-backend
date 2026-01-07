@@ -60,6 +60,7 @@ async def startup_event():
         # Start batch cleanup worker
         start_batch_cleanup_worker()
         logger.info("Batch cleanup service started successfully")
+        logger.info("ho gaya bkl")
     except Exception as e:
         logger.error(f"Failed to start batch cleanup service: {e}")
 

@@ -60,12 +60,23 @@ async def create_order(
         logger.info(f"Creating order for user {current_user.user_id} from cart {request.cart_id}")
         
         # Create order using service
+        # Convert payment method to lowercase to match database enum
+        payment_method_value = request.payment_method
+        logger.info(f"Payment method received: {payment_method_value}, type: {type(payment_method_value)}")
+        
+        if hasattr(payment_method_value, 'value'):
+            payment_method_value = payment_method_value.value
+            logger.info(f"Extracted enum value: {payment_method_value}")
+        
+        payment_method_lower = str(payment_method_value).lower()
+        logger.info(f"Payment method after lowercase conversion: {payment_method_lower}")
+        
         order = OrderService.create_order(
             db=db,
             cart_id=request.cart_id,
             address_id=request.address_id,
             user_id=current_user.user_id,
-            payment_method=request.payment_method.value,
+            payment_method=payment_method_lower,
             coupon_code=request.coupon_code,
             special_instructions=request.special_instructions
         )
