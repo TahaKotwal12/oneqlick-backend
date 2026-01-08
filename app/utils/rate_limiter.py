@@ -286,11 +286,16 @@ def rate_limit(limit: int, window: int = 60, use_user_id: bool = False):
                 if isinstance(arg, Request):
                     request = arg
                     break
+            
+            # Check common parameter names for Request object
             if request is None:
-                request = kwargs.get("request")
+                for param_name in ["request", "http_request", "req"]:
+                    if param_name in kwargs and isinstance(kwargs[param_name], Request):
+                        request = kwargs[param_name]
+                        break
             
             if request is None:
-                logger.warning("Rate limit decorator: Request object not found")
+                logger.warning("Rate limit decorator: Request object not found in args or kwargs")
                 return await func(*args, **kwargs)
             
             # Get identifier
