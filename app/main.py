@@ -14,6 +14,8 @@ from app.config.config import CORS_ORIGINS, CORS_METHODS, CORS_HEADERS
 from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer, search as search_model
 # Import batch cleanup worker
 from app.workers.batch_cleanup_worker import start_batch_cleanup_worker, stop_batch_cleanup_worker, get_worker_status
+from app.utils.rate_limiter import rate_limiter
+from app.config.config import RATE_LIMIT_CONFIG
 import logging
 
 APP_TITLE = "OneQlick Backend"
@@ -26,8 +28,57 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"]  # Expose all headers
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "*"]  # Expose rate limit headers
 )
+
+# Global rate limiting middleware
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    Global rate limiting middleware for all requests.
+    Applies a global rate limit per IP address to prevent DDoS attacks.
+    Also adds rate limit headers to all responses.
+    """
+    # Skip rate limiting for health check and root endpoints
+    if request.url.path in ["/", "/health", "/docs", "/openapi.json", "/redoc"]:
+        return await call_next(request)
+    
+    # Apply global rate limit (1000 requests per hour per IP)
+    if RATE_LIMIT_CONFIG["enabled"]:
+        allowed, current_count, limit, reset_time = rate_limiter.check_rate_limit(
+            request,
+            limit=RATE_LIMIT_CONFIG["global_per_hour"],
+            window=3600  # 1 hour
+        )
+        
+        # Store rate limit info in request state for endpoint decorators to use
+        request.state.rate_limit_headers = rate_limiter.get_rate_limit_headers(current_count, limit, reset_time)
+        
+        if not allowed:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={
+                    "code": 429,
+                    "message": "Global rate limit exceeded. Please try again later.",
+                    "message_id": "GLOBAL_RATE_LIMIT_EXCEEDED",
+                    "data": {
+                        "limit": limit,
+                        "window": "1 hour",
+                        "reset_time": reset_time
+                    }
+                },
+                headers=request.state.rate_limit_headers
+            )
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Add rate limit headers to response if they were set
+    if hasattr(request.state, "rate_limit_headers"):
+        for key, value in request.state.rate_limit_headers.items():
+            response.headers[key] = value
+    
+    return response
 
 # Include API routes
 app.include_router(auth.router, prefix="/api/v1")
@@ -83,11 +134,13 @@ async def root():
         "status": "running",
         "port": 8001,
         "batch_cleanup": "enabled",
+        "rate_limiting": "enabled" if RATE_LIMIT_CONFIG["enabled"] else "disabled",
         "endpoints": {
             "health": "/health",
             "api_docs": "/docs",
             "batch_cleanup_status": "/api/v1/batch-cleanup/status",
-            "batch_cleanup_run": "/api/v1/batch-cleanup/run"
+            "batch_cleanup_run": "/api/v1/batch-cleanup/run",
+            "rate_limit_status": "/api/v1/rate-limit/status"
         }
     }
 
@@ -176,6 +229,30 @@ async def run_batch_cleanup():
             "status": "error",
             "message": f"Failed to run batch cleanup: {str(e)}"
         }
+
+@app.get("/api/v1/rate-limit/status")
+async def rate_limit_status():
+    """Get the current rate limiting configuration and status."""
+    return {
+        "status": "success",
+        "data": {
+            "enabled": RATE_LIMIT_CONFIG["enabled"],
+            "storage_backend": RATE_LIMIT_CONFIG["storage"],
+            "limits": {
+                "global_per_hour": RATE_LIMIT_CONFIG["global_per_hour"],
+                "auth_login_per_minute": RATE_LIMIT_CONFIG["auth_login_per_minute"],
+                "auth_signup_per_minute": RATE_LIMIT_CONFIG["auth_signup_per_minute"],
+                "auth_otp_per_minute": RATE_LIMIT_CONFIG["auth_otp_per_minute"],
+                "public_per_minute": RATE_LIMIT_CONFIG["public_per_minute"],
+                "search_per_minute": RATE_LIMIT_CONFIG["search_per_minute"],
+                "user_per_minute": RATE_LIMIT_CONFIG["user_per_minute"],
+                "admin_per_minute": RATE_LIMIT_CONFIG["admin_per_minute"],
+                "partner_per_minute": RATE_LIMIT_CONFIG["partner_per_minute"]
+            },
+            "whitelist_count": len(RATE_LIMIT_CONFIG["whitelist"]),
+            "message": "Rate limiting is active and protecting the API"
+        }
+    }
 
 @app.exception_handler(EngageFatalException)
 async def fatal_exception_handler(request, exc: EngageFatalException):

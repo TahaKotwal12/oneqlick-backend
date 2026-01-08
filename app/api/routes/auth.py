@@ -22,6 +22,7 @@ from app.infra.db.postgres.models.pending_user import PendingUser
 from app.infra.db.postgres.models.user_session import UserSession
 from app.utils.enums import UserRole, UserStatus
 from app.config.config import JWT_EXPIRATION_HOURS
+from app.utils.rate_limiter import rate_limit, rate_limit_auth, RATE_LIMIT_CONFIG
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ FORGOT_PASSWORD_SUCCESS_MESSAGE = "If the email exists, an OTP has been sent"
 OTP_VERIFIED_SUCCESS_MESSAGE = "OTP verified successfully"
 
 @router.post("/login", response_model=CommonResponse[LoginResponse])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_login_per_minute"], window=60)
 async def login(
     request: LoginRequest,
     http_request: Request,
@@ -113,6 +115,7 @@ async def login(
         )
 
 @router.post("/signup", response_model=CommonResponse[SignupResponse], status_code=201)
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_signup_per_minute"], window=60)
 async def signup(
     request: SignupRequest,
     http_request: Request,
@@ -606,6 +609,7 @@ async def get_user_sessions(
         )
 
 @router.post("/forgot-password", response_model=CommonResponse[SendOTPResponse])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_password_reset_per_minute"], window=60)
 async def forgot_password(
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db)

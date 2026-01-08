@@ -98,8 +98,39 @@ UPLOAD_CONFIG = {
 
 # Rate Limiting Configuration
 RATE_LIMIT_CONFIG = {
-    "requests": int(os.getenv("RATE_LIMIT_REQUESTS", "100")),
-    "window": int(os.getenv("RATE_LIMIT_WINDOW", "3600")),  # 1 hour
+    # Enable/disable rate limiting
+    "enabled": os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true",
+    
+    # Storage backend: "redis" for production, "memory" for development
+    "storage": os.getenv("RATE_LIMIT_STORAGE", "redis" if APP_ENV == "production" else "memory"),
+    
+    # Global limits (per IP address)
+    "global_per_hour": int(os.getenv("RATE_LIMIT_GLOBAL_PER_HOUR", "1000")),
+    
+    # Authentication endpoints (per IP address)
+    "auth_login_per_minute": int(os.getenv("RATE_LIMIT_AUTH_LOGIN_PER_MINUTE", "10")),
+    "auth_signup_per_minute": int(os.getenv("RATE_LIMIT_AUTH_SIGNUP_PER_MINUTE", "5")),
+    "auth_otp_per_minute": int(os.getenv("RATE_LIMIT_AUTH_OTP_PER_MINUTE", "5")),
+    "auth_password_reset_per_minute": int(os.getenv("RATE_LIMIT_AUTH_PASSWORD_RESET_PER_MINUTE", "3")),
+    
+    # Public endpoints (per IP address)
+    "public_per_minute": int(os.getenv("RATE_LIMIT_PUBLIC_PER_MINUTE", "100")),
+    
+    # Search endpoints (per IP address - expensive operations)
+    "search_per_minute": int(os.getenv("RATE_LIMIT_SEARCH_PER_MINUTE", "50")),
+    
+    # Authenticated user endpoints (per user ID)
+    "user_per_minute": int(os.getenv("RATE_LIMIT_USER_PER_MINUTE", "200")),
+    "user_order_placement_per_minute": int(os.getenv("RATE_LIMIT_USER_ORDER_PLACEMENT_PER_MINUTE", "10")),
+    
+    # Admin endpoints (per user ID)
+    "admin_per_minute": int(os.getenv("RATE_LIMIT_ADMIN_PER_MINUTE", "500")),
+    
+    # Partner endpoints (per user ID)
+    "partner_per_minute": int(os.getenv("RATE_LIMIT_PARTNER_PER_MINUTE", "300")),
+    
+    # Whitelist IPs (comma-separated, e.g., monitoring tools, health checks)
+    "whitelist": os.getenv("RATE_LIMIT_WHITELIST", "127.0.0.1,::1").split(","),
 }
 
 # Email Configuration

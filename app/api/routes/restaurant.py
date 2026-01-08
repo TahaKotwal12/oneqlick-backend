@@ -27,6 +27,7 @@ from app.infra.db.postgres.models.food_item import FoodItem
 from app.infra.db.postgres.models.category import Category
 from app.infra.db.postgres.models.user import User
 from app.config.logger import get_logger
+from app.utils.rate_limiter import rate_limit_public
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 logger = get_logger(__name__)
@@ -79,6 +80,7 @@ def is_restaurant_currently_open(restaurant: Restaurant) -> bool:
 
 
 @router.get("/nearby", response_model=CommonResponse[NearbyRestaurantsResponse])
+@rate_limit_public()  # 100 requests/minute for public endpoints
 async def get_nearby_restaurants(
     latitude: float = Query(..., ge=-90, le=90, description="User's latitude"),
     longitude: float = Query(..., ge=-180, le=180, description="User's longitude"),
@@ -414,6 +416,7 @@ async def get_popular_dishes(
 
 
 @router.get("/{restaurant_id}", response_model=CommonResponse[RestaurantDetailResponse])
+@rate_limit_public()  # 100 requests/minute for public endpoints
 async def get_restaurant_by_id(
     restaurant_id: str,
     include_menu: bool = Query(False, description="Include menu items"),

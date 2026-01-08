@@ -12,12 +12,14 @@ from app.api.dependencies import get_current_user, get_optional_current_user
 from app.api.schemas.common_schemas import CommonResponse
 from app.services.search_service import SearchService
 from app.config.logger import get_logger
+from app.utils.rate_limiter import rate_limit_search
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
 @router.get("/")
+@rate_limit_search()  # 50 requests/minute for search
 async def global_search(
     query: str = Query(..., min_length=1, max_length=500, description="Search query"),
     latitude: float = Query(..., ge=-90, le=90, description="User's latitude"),
