@@ -280,22 +280,27 @@ def rate_limit(limit: int, window: int = 60, use_user_id: bool = False):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Find request object in args or kwargs
+            # Find FastAPI Request object in args or kwargs
+            # We need to be careful to distinguish it from Pydantic request models
             request = None
+            
+            # First, check args for FastAPI Request (has headers and client attributes)
             for arg in args:
-                if isinstance(arg, Request):
+                if isinstance(arg, Request) and hasattr(arg, 'headers') and hasattr(arg, 'client'):
                     request = arg
                     break
             
-            # Check common parameter names for Request object
+            # If not found in args, check kwargs with common parameter names
             if request is None:
-                for param_name in ["request", "http_request", "req"]:
-                    if param_name in kwargs and isinstance(kwargs[param_name], Request):
-                        request = kwargs[param_name]
-                        break
+                for param_name in ["http_request", "request", "req"]:
+                    if param_name in kwargs:
+                        obj = kwargs[param_name]
+                        if isinstance(obj, Request) and hasattr(obj, 'headers') and hasattr(obj, 'client'):
+                            request = obj
+                            break
             
             if request is None:
-                logger.warning("Rate limit decorator: Request object not found in args or kwargs")
+                logger.warning("Rate limit decorator: FastAPI Request object not found in args or kwargs")
                 return await func(*args, **kwargs)
             
             # Get identifier
