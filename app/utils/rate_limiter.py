@@ -282,24 +282,26 @@ def rate_limit(limit: int, window: int = 60, use_user_id: bool = False):
         async def wrapper(*args, **kwargs):
             # Find FastAPI Request object in args or kwargs
             # We need to be careful to distinguish it from Pydantic request models
-            request = None
+            request_obj = None
             
             # First, check args for FastAPI Request (has headers and client attributes)
             for arg in args:
-                if isinstance(arg, Request) and hasattr(arg, 'headers') and hasattr(arg, 'client'):
-                    request = arg
+                # Check if it's a FastAPI Request by verifying it has both headers and client
+                if hasattr(arg, 'headers') and hasattr(arg, 'client'):
+                    request_obj = arg
                     break
             
             # If not found in args, check kwargs with common parameter names
-            if request is None:
+            if request_obj is None:
                 for param_name in ["http_request", "request", "req"]:
                     if param_name in kwargs:
                         obj = kwargs[param_name]
-                        if isinstance(obj, Request) and hasattr(obj, 'headers') and hasattr(obj, 'client'):
-                            request = obj
+                        # Check if it's a FastAPI Request by verifying it has both headers and client
+                        if hasattr(obj, 'headers') and hasattr(obj, 'client'):
+                            request_obj = obj
                             break
             
-            if request is None:
+            if request_obj is None:
                 logger.warning("Rate limit decorator: FastAPI Request object not found in args or kwargs")
                 return await func(*args, **kwargs)
             
@@ -307,13 +309,13 @@ def rate_limit(limit: int, window: int = 60, use_user_id: bool = False):
             identifier = None
             if use_user_id:
                 # Try to get user_id from request state (set by auth middleware)
-                identifier = getattr(request.state, "user_id", None)
+                identifier = getattr(request_obj.state, "user_id", None)
                 if identifier:
                     identifier = str(identifier)
             
             # Check rate limit
             allowed, current_count, limit_value, reset_time = rate_limiter.check_rate_limit(
-                request, limit, window, identifier
+                request_obj, limit, window, identifier
             )
             
             # Add rate limit headers to response
