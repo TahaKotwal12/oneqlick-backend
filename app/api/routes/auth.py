@@ -34,8 +34,8 @@ OTP_VERIFIED_SUCCESS_MESSAGE = "OTP verified successfully"
 @router.post("/login", response_model=CommonResponse[LoginResponse])
 @rate_limit(limit=RATE_LIMIT_CONFIG["auth_login_per_minute"], window=60)
 async def login(
-    request: LoginRequest,
     http_request: Request,
+    request: LoginRequest,
     db: Session = Depends(get_db)
 ):
     """User login with email/phone and password"""
@@ -117,8 +117,8 @@ async def login(
 @router.post("/signup", response_model=CommonResponse[SignupResponse], status_code=201)
 @rate_limit(limit=RATE_LIMIT_CONFIG["auth_signup_per_minute"], window=60)
 async def signup(
-    request: SignupRequest,
     http_request: Request,
+    request: SignupRequest,
     db: Session = Depends(get_db)
 ):
     """User registration - creates pending user until email verification"""
@@ -608,9 +608,10 @@ async def get_user_sessions(
             detail=f"Failed to retrieve sessions: {str(e)}"
         )
 
-@router.post("/forgot-password", response_model=CommonResponse[SendOTPResponse])
+@router.post("/forgot-password", response_model=CommonResponse[dict])
 @rate_limit(limit=RATE_LIMIT_CONFIG["auth_password_reset_per_minute"], window=60)
 async def forgot_password(
+    http_request: Request,
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
