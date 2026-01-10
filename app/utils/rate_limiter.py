@@ -284,25 +284,48 @@ def rate_limit(limit: int, window: int = 60, use_user_id: bool = False):
             # We need to be careful to distinguish it from Pydantic request models
             request_obj = None
             
-            # First, check args for FastAPI Request (has headers and client attributes)
-            for arg in args:
-                # Check if it's a FastAPI Request by verifying it has both headers and client
-                if hasattr(arg, 'headers') and hasattr(arg, 'client'):
+            # Debug: Log what we're receiving
+            logger.debug(f"Rate limiter wrapper called with {len(args)} args and {len(kwargs)} kwargs")
+            
+            # First, check args for FastAPI Request
+            # FastAPI Request will have 'headers', 'client', 'url', and 'method' attributes
+            # Pydantic models won't have all of these
+            for i, arg in enumerate(args):
+                arg_type = type(arg).__name__
+                logger.debug(f"Arg {i}: type={arg_type}, has_headers={hasattr(arg, 'headers')}, has_client={hasattr(arg, 'client')}, has_url={hasattr(arg, 'url')}")
+                
+                # Check if it's a Starlette/FastAPI Request
+                # Must have headers, client, url, and method attributes
+                if (hasattr(arg, 'headers') and 
+                    hasattr(arg, 'client') and 
+                    hasattr(arg, 'url') and 
+                    hasattr(arg, 'method') and
+                    not arg_type.endswith('Request')):  # Exclude Pydantic models ending with 'Request'
                     request_obj = arg
+                    logger.debug(f"Found FastAPI Request object at arg position {i}")
                     break
             
-            # If not found in args, check kwargs with common parameter names
+            # If not found in args, check kwargs
             if request_obj is None:
                 for param_name in ["http_request", "request", "req"]:
                     if param_name in kwargs:
                         obj = kwargs[param_name]
-                        # Check if it's a FastAPI Request by verifying it has both headers and client
-                        if hasattr(obj, 'headers') and hasattr(obj, 'client'):
+                        obj_type = type(obj).__name__
+                        logger.debug(f"Checking kwarg '{param_name}': type={obj_type}")
+                        
+                        if (hasattr(obj, 'headers') and 
+                            hasattr(obj, 'client') and 
+                            hasattr(obj, 'url') and 
+                            hasattr(obj, 'method') and
+                            not obj_type.endswith('Request')):
                             request_obj = obj
+                            logger.debug(f"Found FastAPI Request object in kwargs['{param_name}']")
                             break
             
             if request_obj is None:
                 logger.warning("Rate limit decorator: FastAPI Request object not found in args or kwargs")
+                logger.warning(f"Available arg types: {[type(arg).__name__ for arg in args]}")
+                logger.warning(f"Available kwarg keys: {list(kwargs.keys())}")
                 return await func(*args, **kwargs)
             
             # Get identifier
