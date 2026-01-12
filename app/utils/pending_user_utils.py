@@ -177,7 +177,7 @@ class PendingUserUtils:
             try:
                 delivery_partner = DeliveryPartner(
                     user_id=user.user_id,
-                    vehicle_type=pending_user.vehicle_type or 'motorcycle',
+                    vehicle_type=(pending_user.vehicle_type or 'motorcycle').lower(),
                     vehicle_number="Not set",  # Can be updated later
                     license_number=pending_user.license_number,
                     availability_status='offline',
