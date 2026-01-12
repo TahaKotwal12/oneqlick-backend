@@ -173,14 +173,19 @@ class PendingUserUtils:
         # If delivery partner, create delivery partner record
         elif pending_user.role == UserRole.DELIVERY_PARTNER.value and pending_user.license_number:
             from app.infra.db.postgres.models.delivery_partner import DeliveryPartner
+            from app.utils.enums import VehicleType, AvailabilityStatus
             
             try:
+                # Convert vehicle_type string to enum member
+                vehicle_type_str = (pending_user.vehicle_type or 'motorcycle').lower()
+                vehicle_type_enum = VehicleType(vehicle_type_str)
+                
                 delivery_partner = DeliveryPartner(
                     user_id=user.user_id,
-                    vehicle_type=(pending_user.vehicle_type or 'motorcycle').lower(),
+                    vehicle_type=vehicle_type_enum,
                     vehicle_number="Not set",  # Can be updated later
                     license_number=pending_user.license_number,
-                    availability_status='offline',
+                    availability_status=AvailabilityStatus.OFFLINE,
                     rating=0.0,
                     total_ratings=0,
                     total_deliveries=0,
