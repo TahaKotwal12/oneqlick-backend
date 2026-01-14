@@ -23,4 +23,5 @@ python-multipart==0.0.9
 slowapi==0.1.9
 
 # Payment Gateway
+setuptools>=65.0.0  # Required for razorpay pkg_resources
 razorpay==1.4.1
