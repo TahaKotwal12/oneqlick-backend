@@ -14,6 +14,7 @@ from .coupon import Coupon
 from .user_coupon_usage import UserCouponUsage
 from .review import Review
 from .notification import Notification
+from .payment import Payment
 
 # Authentication models
 from .refresh_token import RefreshToken
@@ -45,6 +46,7 @@ __all__ = [
     'UserCouponUsage',
     'Review',
     'Notification',
+    'Payment',
     
     # Authentication models
     'RefreshToken',

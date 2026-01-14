@@ -182,3 +182,35 @@ def validate_config():
 
 # Validate configuration on import
 validate_config()
+
+
+# Settings class for easy access
+class Settings:
+    """Application settings"""
+    # Database
+    DATABASE_URL = DATABASE_URL
+    
+    # App
+    SECRET_KEY = SECRET_KEY
+    DEBUG = DEBUG
+    APP_ENV = APP_ENV
+    
+    # JWT
+    JWT_SECRET_KEY = JWT_SECRET_KEY
+    JWT_ALGORITHM = JWT_ALGORITHM
+    JWT_EXPIRATION_HOURS = JWT_EXPIRATION_HOURS
+    
+    # Razorpay
+    RAZORPAY_KEY_ID = PAYMENT_CONFIG["razorpay_key_id"]
+    RAZORPAY_KEY_SECRET = PAYMENT_CONFIG["razorpay_key_secret"]
+    RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
+    
+    # CORS
+    CORS_ORIGINS = CORS_ORIGINS
+    
+    # Redis
+    REDIS_CONFIG = REDIS_CONFIG
+
+
+settings = Settings()
+

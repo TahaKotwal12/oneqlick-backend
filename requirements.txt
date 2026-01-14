@@ -21,3 +21,6 @@ python-multipart==0.0.9
 
 # Rate limiting
 slowapi==0.1.9
+
+# Payment Gateway
+razorpay==1.4.1
