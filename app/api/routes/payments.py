@@ -10,7 +10,7 @@ from decimal import Decimal
 import logging
 import json
 
-from app.infra.db.session import get_db
+from app.infra.db.postgres.postgres_config import get_db
 from app.api.dependencies import get_current_user
 from app.infra.db.postgres.models import Payment, Order, User
 from app.services.razorpay_service import razorpay_service
