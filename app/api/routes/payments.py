@@ -114,7 +114,7 @@ async def create_payment_order(
                 user_id=current_user.user_id,
                 amount=request.amount,
                 currency=request.currency,
-                payment_method=PaymentMethod.ONLINE,
+                payment_method=PaymentMethod.UPI,  # Default to UPI for online payments
                 payment_status=PaymentStatus.PENDING,
                 razorpay_order_id=razorpay_order["razorpay_order_id"]
             )
