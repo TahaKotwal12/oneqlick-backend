@@ -35,6 +35,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    logging:
+      driver: loki
+      options:
+        loki-url: "https://1453519:${GCLOUD_RW_API_KEY}@logs-prod-028.grafana.net/loki/api/v1/push"
+        loki-external-labels: "job=oneqlick-backend,env=development,container={{.Name}}"
+        loki-retries: "2"
+        loki-batch-size: "400"
+        max-size: "10m"
+        max-file: "3"
 
   # ============================================
   # PostgreSQL Database
