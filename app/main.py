@@ -18,8 +18,14 @@ from app.utils.rate_limiter import rate_limiter
 from app.config.config import RATE_LIMIT_CONFIG
 import logging
 
+# Initialize Sentry for error tracking and performance monitoring
+# This MUST be done before creating the FastAPI app
+from app.monitoring import init_sentry
+init_sentry()
+
 APP_TITLE = "OneQlick Backend"
 app = FastAPI(title=APP_TITLE)
+
 
 # Configure CORS middleware to allow requests from mobile app
 app.add_middleware(

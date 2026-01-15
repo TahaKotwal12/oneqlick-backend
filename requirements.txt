@@ -22,6 +22,10 @@ python-multipart==0.0.9
 # Rate limiting
 slowapi==0.1.9
 
+# Monitoring and Error Tracking
+sentry-sdk[fastapi]==1.40.0
+
+
 # Payment Gateway
 setuptools>=65.0.0  # Required for razorpay pkg_resources
 razorpay==1.4.1
