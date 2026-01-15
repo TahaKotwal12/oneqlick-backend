@@ -18,13 +18,35 @@ from app.utils.rate_limiter import rate_limiter
 from app.config.config import RATE_LIMIT_CONFIG
 import logging
 
-# Initialize Sentry for error tracking and performance monitoring
-# This MUST be done before creating the FastAPI app
-from app.monitoring import init_sentry
-init_sentry()
-
 APP_TITLE = "OneQlick Backend"
 app = FastAPI(title=APP_TITLE)
+
+# ============================================
+# Prometheus Metrics
+# ============================================
+from prometheus_fastapi_instrumentator import Instrumentator
+
+# Initialize Prometheus metrics
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/metrics"],
+    env_var_name="ENABLE_METRICS",
+    inprogress_name="fastapi_inprogress",
+    inprogress_labels=True,
+)
+
+# Add custom metrics
+instrumentator.add(
+    # Track request duration by endpoint
+    instrumentator.metrics.default()
+)
+
+# Expose metrics endpoint at /metrics
+instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
 
 
 # Configure CORS middleware to allow requests from mobile app
