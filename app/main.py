@@ -26,26 +26,8 @@ app = FastAPI(title=APP_TITLE)
 # ============================================
 from prometheus_fastapi_instrumentator import Instrumentator
 
-# Initialize Prometheus metrics
-instrumentator = Instrumentator(
-    should_group_status_codes=False,
-    should_ignore_untemplated=True,
-    should_respect_env_var=True,
-    should_instrument_requests_inprogress=True,
-    excluded_handlers=["/metrics"],
-    env_var_name="ENABLE_METRICS",
-    inprogress_name="fastapi_inprogress",
-    inprogress_labels=True,
-)
-
-# Add custom metrics
-instrumentator.add(
-    # Track request duration by endpoint
-    instrumentator.metrics.default()
-)
-
-# Expose metrics endpoint at /metrics
-instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+# Initialize and expose Prometheus metrics
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 
