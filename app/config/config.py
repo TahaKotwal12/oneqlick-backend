@@ -25,6 +25,7 @@ REDIS_CONFIG = {
     "host": os.getenv("REDIS_HOST", "localhost"),
     "port": int(os.getenv("REDIS_PORT", 6379)),
     "password": os.getenv("REDIS_PASSWORD", ""),
+    "use_tls": os.getenv("REDIS_USE_TLS", "false").lower() == "true",  # For Upstash/Cloud Redis
     "ttl": int(os.getenv("REDIS_TTL", 300)),
     "namespace": os.getenv("REDIS_NAMESPACE", "oneqlick"),
     "timeout": int(os.getenv("REDIS_TIMEOUT_MS", 10000)),

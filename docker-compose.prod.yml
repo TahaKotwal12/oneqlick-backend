@@ -18,3 +18,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+# ============================================
+# Redis Configuration
+# ============================================
+# Redis is now using Upstash (external service)
+# This frees up ~100MB RAM on EC2 instance
+# Configure REDIS_HOST, REDIS_PORT, REDIS_PASSWORD in .env
+
