@@ -171,35 +171,44 @@ class PendingUserUtils:
                 # Don't fail user creation if restaurant creation fails
         
         # If delivery partner, create delivery partner record
-        elif pending_user.role == UserRole.DELIVERY_PARTNER.value and pending_user.license_number:
+        elif pending_user.role == UserRole.DELIVERY_PARTNER.value:
+            # Validate required fields
+            if not pending_user.license_number:
+                logger.error(f"Delivery partner signup missing license_number for user {pending_user.email}")
+                raise ValueError("License number is required for delivery partners")
+            
             from app.infra.db.postgres.models.delivery_partner import DeliveryPartner
             from app.utils.enums import VehicleType, AvailabilityStatus
             
-            try:
-                # Convert vehicle_type string to enum member
-                vehicle_type_str = (pending_user.vehicle_type or 'motorcycle').lower()
-                vehicle_type_enum = VehicleType(vehicle_type_str)
-                
-                delivery_partner = DeliveryPartner(
-                    user_id=user.user_id,
-                    vehicle_type=vehicle_type_enum,
-                    vehicle_number="Not set",  # Can be updated later
-                    license_number=pending_user.license_number,
-                    availability_status=AvailabilityStatus.OFFLINE,
-                    rating=0.0,
-                    total_ratings=0,
-                    total_deliveries=0,
-                    is_verified=False,  # Needs document verification
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc)
-                )
-                
-                db.add(delivery_partner)
-                logger.info(f"Created delivery partner for user {user.user_id}")
-                
-            except Exception as e:
-                logger.error(f"Error creating delivery partner for user {user.user_id}: {str(e)}")
-                # Don't fail user creation if delivery partner creation fails
+            # Validate and convert vehicle_type
+            vehicle_type_str = (pending_user.vehicle_type or 'motorcycle').lower().strip()
+            
+            # Validate against allowed values
+            valid_vehicle_types = [vt.value for vt in VehicleType]
+            if vehicle_type_str not in valid_vehicle_types:
+                logger.error(f"Invalid vehicle_type '{vehicle_type_str}' for user {pending_user.email}. Valid types: {valid_vehicle_types}")
+                raise ValueError(f"Invalid vehicle type '{vehicle_type_str}'. Must be one of: {', '.join(valid_vehicle_types)}")
+            
+            vehicle_type_enum = VehicleType(vehicle_type_str)
+            
+            logger.info(f"Creating delivery partner for user {pending_user.email}: vehicle_type={vehicle_type_enum.value}, license_number={pending_user.license_number}")
+            
+            delivery_partner = DeliveryPartner(
+                user_id=user.user_id,
+                vehicle_type=vehicle_type_enum,
+                vehicle_number="PENDING",  # Clear placeholder - can be updated later
+                license_number=pending_user.license_number,
+                availability_status=AvailabilityStatus.OFFLINE,
+                rating=0.0,
+                total_ratings=0,
+                total_deliveries=0,
+                is_verified=False,  # Needs document verification
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            
+            db.add(delivery_partner)
+            logger.info(f"Successfully created delivery partner record for user {user.user_id} with vehicle type {vehicle_type_enum.value}")
         
         # Mark pending user as verified
         pending_user.is_verified = True
