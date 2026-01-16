@@ -12,12 +12,12 @@ class DeliveryPartner(Base):
 
     delivery_partner_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id', ondelete='CASCADE'))
-    vehicle_type = Column(Enum(VehicleType), nullable=False)
+    vehicle_type = Column(Enum(VehicleType, name='vehicle_type', values_callable=lambda x: [e.value for e in x]), nullable=False)
     vehicle_number = Column(String(50), nullable=True)  # Can be updated after signup
     license_number = Column(String(50), nullable=False)
     current_latitude = Column(DECIMAL(10, 8))
     current_longitude = Column(DECIMAL(11, 8))
-    availability_status = Column(Enum(AvailabilityStatus), default=AvailabilityStatus.OFFLINE)
+    availability_status = Column(Enum(AvailabilityStatus, name='availability_status', values_callable=lambda x: [e.value for e in x]), default=AvailabilityStatus.OFFLINE)
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
     total_deliveries = Column(Integer, default=0)
