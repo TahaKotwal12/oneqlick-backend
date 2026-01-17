@@ -73,11 +73,15 @@ NOTIFICATION_CONFIG = {
 # Google OAuth Configuration
 GOOGLE_OAUTH_CONFIG = {
     "client_id": os.getenv("GOOGLE_CLIENT_ID", "1024710005377-603b3r4u26tgehu0nc1d9frjb1j0v1u9.apps.googleusercontent.com"),
-    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),  # Required - no default for security
     "project_id": os.getenv("GOOGLE_PROJECT_ID", "pragmatic-braid-445409-h4"),
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "redirect_uris": [
+        "oneqlick://auth/callback",  # Mobile app redirect
+        "http://localhost:8081",      # Development
+    ]
 }
 
 # Security Configuration
@@ -173,6 +177,11 @@ def validate_config():
     
     if APP_ENV == "production" and DEBUG:
         errors.append("DEBUG should be False in production")
+    
+    # Validate Google OAuth configuration
+    if APP_ENV == "production" and not GOOGLE_OAUTH_CONFIG.get("client_secret"):
+        errors.append("GOOGLE_CLIENT_SECRET must be set in production for Google OAuth to work")
+
     
     if errors:
         logger.warning("Configuration validation warnings:")

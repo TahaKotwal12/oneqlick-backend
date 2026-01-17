@@ -424,6 +424,86 @@ async def google_signin(
             detail=f"Google signin failed: {str(e)}"
         )
 
+@router.post("/google-token-exchange", response_model=CommonResponse[dict])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_login_per_minute"], window=60)
+async def google_token_exchange(
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Exchange Google authorization code for ID token (server-side)
+    This endpoint keeps the client_secret secure on the backend
+    """
+    try:
+        import httpx
+        from app.config.config import GOOGLE_OAUTH_CONFIG
+        
+        # Get request body
+        body = await http_request.json()
+        code = body.get("code")
+        redirect_uri = body.get("redirect_uri")
+        code_verifier = body.get("code_verifier")
+        
+        if not code or not redirect_uri:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required parameters: code and redirect_uri"
+            )
+        
+        # Validate client_secret is configured
+        if not GOOGLE_OAUTH_CONFIG.get("client_secret"):
+            logger.error("GOOGLE_CLIENT_SECRET is not configured")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth is not properly configured"
+            )
+        
+        # Exchange authorization code for tokens with Google
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                GOOGLE_OAUTH_CONFIG["token_uri"],
+                data={
+                    "code": code,
+                    "client_id": GOOGLE_OAUTH_CONFIG["client_id"],
+                    "client_secret": GOOGLE_OAUTH_CONFIG["client_secret"],  # Secure on backend
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                    "code_verifier": code_verifier,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            
+            if token_response.status_code != 200:
+                logger.error(f"Google token exchange failed: {token_response.text}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to exchange authorization code with Google"
+                )
+            
+            token_data = token_response.json()
+            
+            # Return only the ID token to the frontend
+            # Frontend will use this to call /auth/google-signin
+            return CommonResponse(
+                code=200,
+                message="Token exchange successful",
+                message_id="TOKEN_EXCHANGE_SUCCESS",
+                data={
+                    "id_token": token_data.get("id_token"),
+                    "expires_in": token_data.get("expires_in", 3600)
+                }
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token exchange error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token exchange failed: {str(e)}"
+        )
+
+
 @router.post("/refresh", response_model=CommonResponse[RefreshTokenResponse])
 async def refresh_token(
     request: RefreshTokenRequest,
