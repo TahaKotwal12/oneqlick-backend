@@ -84,7 +84,7 @@ async def create_payment_order(
             Payment.order_id == request.order_id
         ).first()
         
-        if existing_payment and existing_payment.payment_status == PaymentStatus.SUCCESS:
+        if existing_payment and existing_payment.payment_status == PaymentStatus.PAID:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Order already paid"
@@ -204,7 +204,7 @@ async def verify_payment(
         # Update payment record
         payment.razorpay_payment_id = request.razorpay_payment_id
         payment.razorpay_signature = request.razorpay_signature
-        payment.payment_status = PaymentStatus.SUCCESS
+        payment.payment_status = PaymentStatus.PAID
         payment.payment_method_details = {
             "method": razorpay_payment.get("method"),
             "vpa": razorpay_payment.get("vpa"),  # UPI ID
@@ -214,7 +214,7 @@ async def verify_payment(
         }
         
         # Update order status
-        order.payment_status = PaymentStatus.SUCCESS
+        order.payment_status = PaymentStatus.PAID
         order.payment_id = request.razorpay_payment_id
         order.order_status = OrderStatus.CONFIRMED
         
@@ -296,13 +296,13 @@ async def razorpay_webhook(
                 ).first()
                 
                 if payment:
-                    payment.payment_status = PaymentStatus.SUCCESS
+                    payment.payment_status = PaymentStatus.PAID
                     payment.razorpay_payment_id = payment_id
                     
                     # Update order
                     order = db.query(Order).filter(Order.order_id == order_id).first()
                     if order:
-                        order.payment_status = PaymentStatus.SUCCESS
+                        order.payment_status = PaymentStatus.PAID
                         order.order_status = OrderStatus.CONFIRMED
                     
                     db.commit()
