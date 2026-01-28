@@ -8,7 +8,7 @@ from app.api.schemas.common_schemas import CommonResponse
 from app.config.logger import get_logger
 from app.infra.db.postgres.postgres_config import get_db
 from app.infra.redis.repositories.redis_repositories import RedisRepository
-from app.api.routes import auth, user, restaurant, food_items, search, coupons, partner_restaurant, categories, orders, carts, payments
+from app.api.routes import auth, user, restaurant, food_items, search, coupons, partner_restaurant, partner_menu, categories, orders, carts, payments
 from app.config.config import CORS_ORIGINS, CORS_METHODS, CORS_HEADERS
 # Import models to ensure they are registered with SQLAlchemy
 from app.infra.db.postgres.models import user as user_model, address, otp_verification, pending_user, restaurant as restaurant_model, restaurant_offer, search as search_model
@@ -98,6 +98,7 @@ app.include_router(food_items.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(coupons.router, prefix="/api/v1")
 app.include_router(partner_restaurant.router, prefix="/api/v1")
+app.include_router(partner_menu.router, prefix="/api/v1")
 app.include_router(categories.router, prefix="/api/v1")
 app.include_router(orders.router, prefix="/api/v1")
 app.include_router(carts.router, prefix="/api/v1")
