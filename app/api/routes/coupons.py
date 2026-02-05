@@ -543,8 +543,9 @@ async def get_carousel_coupons(
     carousel_responses = []
     
     for coupon in coupons:
-        # Check if expired
-        is_expired = coupon.valid_until < now
+        # Check if expired - make database timestamp timezone-aware for comparison
+        coupon_valid_until = coupon.valid_until.replace(tzinfo=timezone.utc) if coupon.valid_until.tzinfo is None else coupon.valid_until
+        is_expired = coupon_valid_until < now
         
         # Format discount display
         discount_display = ""
