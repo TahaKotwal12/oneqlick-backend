@@ -239,3 +239,71 @@ class CouponUsageListResponse(BaseModel):
                 "total_savings": 350.00
             }
         }
+
+
+class CarouselCouponResponse(BaseModel):
+    """Response schema for carousel coupon display."""
+    coupon_id: UUID
+    code: str
+    title: str
+    description: Optional[str]
+    coupon_type: CouponType
+    discount_value: Decimal
+    min_order_amount: Decimal
+    max_discount_amount: Optional[Decimal]
+    
+    # Carousel-specific fields
+    carousel_title: Optional[str]
+    carousel_subtitle: Optional[str]
+    carousel_badge: Optional[str]
+    carousel_icon: Optional[str]
+    carousel_gradient_start: str
+    carousel_gradient_middle: str
+    carousel_gradient_end: str
+    carousel_action_text: str
+    carousel_priority: int
+    
+    # Computed fields
+    is_expired: bool = Field(default=False, description="Whether coupon has expired")
+    discount_display: str = Field(default="", description="Formatted discount display")
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "coupon_id": "123e4567-e89b-12d3-a456-426614174000",
+                "code": "MEGA60",
+                "title": "Save 60% on orders above ₹199",
+                "description": "On your first 3 orders above ₹199",
+                "coupon_type": "percentage",
+                "discount_value": 60.00,
+                "min_order_amount": 199.00,
+                "max_discount_amount": 100.00,
+                "carousel_title": "MEGA SALE",
+                "carousel_subtitle": "Up to 60% OFF",
+                "carousel_badge": "LIMITED TIME",
+                "carousel_icon": "fire",
+                "carousel_gradient_start": "#4F46E5",
+                "carousel_gradient_middle": "#6366F1",
+                "carousel_gradient_end": "#818CF8",
+                "carousel_action_text": "Order Now",
+                "carousel_priority": 1,
+                "is_expired": False,
+                "discount_display": "60%"
+            }
+        }
+
+
+class CarouselCouponsListResponse(BaseModel):
+    """Response schema for carousel coupons list."""
+    coupons: List[CarouselCouponResponse]
+    total_count: int
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "coupons": [],
+                "total_count": 5
+            }
+        }
+

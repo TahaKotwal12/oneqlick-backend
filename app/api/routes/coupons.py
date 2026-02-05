@@ -23,7 +23,9 @@ from app.api.schemas.coupon_schemas import (
     RestaurantOfferResponse,
     OffersListResponse,
     CouponUsageResponse,
-    CouponUsageListResponse
+    CouponUsageListResponse,
+    CarouselCouponResponse,
+    CarouselCouponsListResponse
 )
 from app.utils.enums import CouponType
 from app.config.logger import get_logger
@@ -511,3 +513,76 @@ async def get_restaurant_offers(
         offers=offer_responses,
         total_count=len(offer_responses)
     )
+
+
+@router.get("/carousel", response_model=CarouselCouponsListResponse)
+async def get_carousel_coupons(
+    db: Session = Depends(get_db)
+):
+    """
+    Get coupons configured for carousel display on home screen.
+    
+    Returns coupons where show_in_carousel is True, sorted by carousel_priority.
+    Includes all carousel-specific fields like gradients, icons, badges, etc.
+    
+    **Authentication:** Not required (public endpoint)
+    """
+    logger.info("Fetching carousel coupons")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Query coupons marked for carousel display
+    coupons = db.query(Coupon).filter(
+        Coupon.is_active == True,
+        Coupon.show_in_carousel == True,
+        Coupon.valid_from <= now,
+        Coupon.valid_until >= now
+    ).order_by(Coupon.carousel_priority.desc()).all()
+    
+    # Process coupons and add computed fields
+    carousel_responses = []
+    
+    for coupon in coupons:
+        # Check if expired
+        is_expired = coupon.valid_until < now
+        
+        # Format discount display
+        discount_display = ""
+        if coupon.coupon_type == CouponType.PERCENTAGE:
+            discount_display = f"{int(coupon.discount_value)}%"
+        elif coupon.coupon_type == CouponType.FIXED_AMOUNT:
+            discount_display = f"₹{int(coupon.discount_value)}"
+        elif coupon.coupon_type == CouponType.FREE_DELIVERY:
+            discount_display = "FREE"
+        
+        carousel_response = CarouselCouponResponse(
+            coupon_id=coupon.coupon_id,
+            code=coupon.code,
+            title=coupon.title,
+            description=coupon.description,
+            coupon_type=coupon.coupon_type,
+            discount_value=coupon.discount_value,
+            min_order_amount=coupon.min_order_amount,
+            max_discount_amount=coupon.max_discount_amount,
+            carousel_title=coupon.carousel_title or coupon.title,
+            carousel_subtitle=coupon.carousel_subtitle or f"Save {discount_display}",
+            carousel_badge=coupon.carousel_badge,
+            carousel_icon=coupon.carousel_icon or "percent",
+            carousel_gradient_start=coupon.carousel_gradient_start,
+            carousel_gradient_middle=coupon.carousel_gradient_middle,
+            carousel_gradient_end=coupon.carousel_gradient_end,
+            carousel_action_text=coupon.carousel_action_text,
+            carousel_priority=coupon.carousel_priority,
+            is_expired=is_expired,
+            discount_display=discount_display
+        )
+        
+        carousel_responses.append(carousel_response)
+    
+    logger.info(f"Found {len(carousel_responses)} carousel coupons")
+    
+    return CarouselCouponsListResponse(
+        coupons=carousel_responses,
+        total_count=len(carousel_responses)
+    )
+

@@ -24,3 +24,15 @@ class Coupon(Base):
     valid_until = Column(TIMESTAMP, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    
+    # Carousel display fields
+    show_in_carousel = Column(Boolean, default=False)
+    carousel_priority = Column(Integer, default=0)
+    carousel_title = Column(String(100))
+    carousel_subtitle = Column(String(100))
+    carousel_badge = Column(String(50))
+    carousel_icon = Column(String(50))
+    carousel_gradient_start = Column(String(7), default='#4F46E5')
+    carousel_gradient_middle = Column(String(7), default='#6366F1')
+    carousel_gradient_end = Column(String(7), default='#818CF8')
+    carousel_action_text = Column(String(50), default='Order Now')
