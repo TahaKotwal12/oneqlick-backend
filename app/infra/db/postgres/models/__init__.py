@@ -28,6 +28,7 @@ from .pending_user import PendingUser
 from .cart import Cart
 from .cart_item import CartItem
 from .user_wallet import UserWallet
+from .pricing_config import PricingConfig
 
 __all__ = [
     # Core models
@@ -60,4 +61,5 @@ __all__ = [
     'Cart',
     'CartItem',
     'UserWallet',
+    'PricingConfig',
 ]

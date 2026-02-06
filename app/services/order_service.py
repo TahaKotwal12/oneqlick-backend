@@ -24,14 +24,13 @@ from app.infra.db.postgres.models.user_coupon_usage import UserCouponUsage
 from app.infra.db.postgres.models.user import User
 from app.utils.order_utils import (
     generate_order_number,
-    calculate_delivery_fee,
-    calculate_order_totals,
     calculate_distance,
     validate_status_transition,
     is_order_cancellable,
     calculate_estimated_delivery_time,
     calculate_delivery_partner_earnings
 )
+from app.services.pricing_service import PricingService
 from app.utils.enums import OrderStatus, PaymentStatus, CouponType, FoodStatus
 from fastapi import HTTPException, status
 
@@ -151,15 +150,13 @@ class OrderService:
                 detail=f"Minimum order amount is ₹{restaurant.min_order_amount}"
             )
         
-        # Calculate distance and delivery fee
+        # Calculate distance
         distance_km = calculate_distance(
             float(address.latitude) if address.latitude else 0,
             float(address.longitude) if address.longitude else 0,
             float(restaurant.latitude),
             float(restaurant.longitude)
         )
-        
-        delivery_fee = calculate_delivery_fee(distance_km)
         
         # Apply coupon if provided
         discount_amount = Decimal('0.00')
@@ -172,13 +169,17 @@ class OrderService:
             discount_amount = coupon_result['discount_amount']
             coupon_applied = coupon_result['coupon']
         
-        # Calculate totals
-        tax_amount, platform_fee, total_amount = calculate_order_totals(
-            subtotal=subtotal,
-            delivery_fee=delivery_fee,
-            discount_amount=discount_amount,
-            platform_fee=restaurant.platform_fee
-        )
+        # Calculate pricing using PricingService (database-driven)
+        delivery_fee = PricingService.calculate_delivery_fee(db, distance_km, subtotal)
+        platform_fee = PricingService.calculate_platform_fee(db, subtotal)
+        tax_amount = PricingService.calculate_tax(db, subtotal)
+        
+        # Calculate total
+        total_amount = subtotal + tax_amount + delivery_fee + platform_fee - discount_amount
+        
+        # Ensure total is not negative
+        if total_amount < Decimal('0.00'):
+            total_amount = Decimal('0.00')
         
         return {
             'cart': cart,

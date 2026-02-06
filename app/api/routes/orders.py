@@ -214,6 +214,67 @@ async def validate_order(
         )
 
 
+@router.post("/preview", response_model=CommonResponse[PriceBreakdownResponse])
+async def preview_order_price(
+    request: OrderValidateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Preview order price breakdown before placing order.
+    
+    This endpoint calculates exact pricing using database-driven pricing configuration:
+    - Subtotal
+    - Tax (from pricing_config)
+    - Delivery fee (distance-based, from pricing_config)
+    - Platform fee (from pricing_config)
+    - Discount (if coupon applied)
+    - Total amount
+    
+    This ensures the price shown on checkout matches the final Razorpay charge.
+    """
+    try:
+        logger.info(f"Previewing order price for user {current_user.user_id}")
+        
+        # Use the same validation logic to ensure consistency
+        order_data = OrderService.validate_and_calculate_order(
+            db=db,
+            cart_id=request.cart_id,
+            address_id=request.address_id,
+            user_id=current_user.user_id,
+            coupon_code=request.coupon_code
+        )
+        
+        # Build price breakdown response
+        price_breakdown = PriceBreakdownResponse(
+            subtotal=order_data['subtotal'],
+            tax_amount=order_data['tax_amount'],
+            delivery_fee=order_data['delivery_fee'],
+            discount_amount=order_data['discount_amount'],
+            platform_fee=order_data['platform_fee'],
+            total_amount=order_data['total_amount'],
+            coupon_applied=order_data['coupon'].code if order_data['coupon'] else None,
+            coupon_discount=order_data['discount_amount'] if order_data['coupon'] else None
+        )
+        
+        return CommonResponse(
+            code=200,
+            message="Order price preview calculated successfully",
+            message_id="ORDER_PREVIEW_SUCCESS",
+            data=price_breakdown
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error previewing order price: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview order price: {str(e)}"
+        )
+
+
+
 @router.get("/my-orders", response_model=CommonResponse[MyOrdersResponse])
 async def get_my_orders(
     status_filter: Optional[OrderStatus] = Query(None, description="Filter by order status"),
