@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from app.infra.db.postgres.postgres_config import get_db
-from app.api.dependencies import get_current_user, get_optional_current_user
+from app.api.dependencies import get_current_user, get_optional_current_user, require_admin
 from app.infra.db.postgres.models.user import User
 from app.infra.db.postgres.models.coupon import Coupon
 from app.infra.db.postgres.models.user_coupon_usage import UserCouponUsage
@@ -25,7 +25,11 @@ from app.api.schemas.coupon_schemas import (
     CouponUsageResponse,
     CouponUsageListResponse,
     CarouselCouponResponse,
-    CarouselCouponsListResponse
+    CarouselCouponsListResponse,
+    CreateCouponRequest,
+    UpdateCouponRequest,
+    AdminCouponResponse,
+    AdminCouponListResponse
 )
 from app.utils.enums import CouponType
 from app.config.logger import get_logger
@@ -586,4 +590,252 @@ async def get_carousel_coupons(
         coupons=carousel_responses,
         total_count=len(carousel_responses)
     )
+
+
+# ============================================================================
+# ADMIN ENDPOINTS
+# ============================================================================
+
+@router.post("", response_model=AdminCouponResponse, status_code=status.HTTP_201_CREATED)
+async def create_coupon(
+    coupon_data: CreateCouponRequest,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new coupon (admin only).
+    
+    **Authentication:** Admin only
+    
+    **Headers:**
+    - `Authorization: Bearer {admin_access_token}`
+    """
+    logger.info(f"Admin {current_admin.user_id} creating coupon: {coupon_data.code}")
+    
+    # Check if coupon code already exists
+    existing_coupon = db.query(Coupon).filter(Coupon.code == coupon_data.code).first()
+    if existing_coupon:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Coupon with code '{coupon_data.code}' already exists"
+        )
+    
+    # Create new coupon
+    new_coupon = Coupon(
+        code=coupon_data.code,
+        title=coupon_data.title,
+        description=coupon_data.description,
+        coupon_type=coupon_data.coupon_type,
+        discount_value=coupon_data.discount_value,
+        min_order_amount=coupon_data.min_order_amount,
+        max_discount_amount=coupon_data.max_discount_amount,
+        usage_limit=coupon_data.usage_limit,
+        used_count=0,
+        valid_from=coupon_data.valid_from,
+        valid_until=coupon_data.valid_until,
+        is_active=coupon_data.is_active,
+        show_in_carousel=coupon_data.show_in_carousel,
+        carousel_priority=coupon_data.carousel_priority,
+        carousel_title=coupon_data.carousel_title,
+        carousel_subtitle=coupon_data.carousel_subtitle,
+        carousel_badge=coupon_data.carousel_badge,
+        carousel_icon=coupon_data.carousel_icon,
+        carousel_gradient_start=coupon_data.carousel_gradient_start,
+        carousel_gradient_middle=coupon_data.carousel_gradient_middle,
+        carousel_gradient_end=coupon_data.carousel_gradient_end,
+        carousel_action_text=coupon_data.carousel_action_text
+    )
+    
+    db.add(new_coupon)
+    db.commit()
+    db.refresh(new_coupon)
+    
+    logger.info(f"Coupon created successfully: {new_coupon.coupon_id}")
+    
+    return AdminCouponResponse.from_orm(new_coupon)
+
+
+@router.get("/{coupon_id}", response_model=AdminCouponResponse)
+async def get_coupon_by_id(
+    coupon_id: UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get a single coupon by ID (admin only).
+    
+    **Authentication:** Admin only
+    
+    **Headers:**
+    - `Authorization: Bearer {admin_access_token}`
+    """
+    logger.info(f"Admin {current_admin.user_id} fetching coupon: {coupon_id}")
+    
+    coupon = db.query(Coupon).filter(Coupon.coupon_id == coupon_id).first()
+    if not coupon:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coupon with ID {coupon_id} not found"
+        )
+    
+    return AdminCouponResponse.from_orm(coupon)
+
+
+@router.put("/{coupon_id}", response_model=AdminCouponResponse)
+async def update_coupon(
+    coupon_id: UUID,
+    coupon_data: UpdateCouponRequest,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update a coupon (admin only).
+    
+    **Authentication:** Admin only
+    
+    **Headers:**
+    - `Authorization: Bearer {admin_access_token}`
+    """
+    logger.info(f"Admin {current_admin.user_id} updating coupon: {coupon_id}")
+    
+    # Fetch existing coupon
+    coupon = db.query(Coupon).filter(Coupon.coupon_id == coupon_id).first()
+    if not coupon:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coupon with ID {coupon_id} not found"
+        )
+    
+    # Check if code is being changed and if new code already exists
+    if coupon_data.code and coupon_data.code != coupon.code:
+        existing_coupon = db.query(Coupon).filter(Coupon.code == coupon_data.code).first()
+        if existing_coupon:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Coupon with code '{coupon_data.code}' already exists"
+            )
+    
+    # Update only provided fields
+    update_data = coupon_data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(coupon, field, value)
+    
+    # Update timestamp
+    coupon.updated_at = datetime.now(timezone.utc)
+    
+    db.commit()
+    db.refresh(coupon)
+    
+    logger.info(f"Coupon updated successfully: {coupon_id}")
+    
+    return AdminCouponResponse.from_orm(coupon)
+
+
+@router.delete("/{coupon_id}")
+async def delete_coupon(
+    coupon_id: UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a coupon (admin only).
+    
+    If the coupon has been used, it will be soft-deleted (set to inactive).
+    If it hasn't been used, it will be permanently deleted.
+    
+    **Authentication:** Admin only
+    
+    **Headers:**
+    - `Authorization: Bearer {admin_access_token}`
+    """
+    logger.info(f"Admin {current_admin.user_id} deleting coupon: {coupon_id}")
+    
+    # Fetch coupon
+    coupon = db.query(Coupon).filter(Coupon.coupon_id == coupon_id).first()
+    if not coupon:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Coupon with ID {coupon_id} not found"
+        )
+    
+    # Check if coupon has been used
+    usage_count = db.query(func.count(UserCouponUsage.user_coupon_usage_id))\
+        .filter(UserCouponUsage.coupon_id == coupon_id).scalar()
+    
+    if usage_count > 0:
+        # Soft delete - set to inactive
+        coupon.is_active = False
+        coupon.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        logger.info(f"Coupon soft-deleted (has {usage_count} usage records): {coupon_id}")
+        return {
+            "success": True,
+            "message": f"Coupon deactivated successfully (has {usage_count} usage records)",
+            "deleted_type": "soft"
+        }
+    else:
+        # Hard delete - permanently remove
+        db.delete(coupon)
+        db.commit()
+        logger.info(f"Coupon permanently deleted: {coupon_id}")
+        return {
+            "success": True,
+            "message": "Coupon deleted permanently",
+            "deleted_type": "hard"
+        }
+
+
+@router.get("/admin/list", response_model=AdminCouponListResponse)
+async def list_all_coupons_admin(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(50, ge=1, le=100, description="Items per page"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    show_in_carousel: Optional[bool] = Query(None, description="Filter by carousel visibility"),
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all coupons with pagination (admin only).
+    
+    Returns ALL coupons including inactive and expired ones.
+    
+    **Authentication:** Admin only
+    
+    **Headers:**
+    - `Authorization: Bearer {admin_access_token}`
+    """
+    logger.info(f"Admin {current_admin.user_id} listing coupons (page={page}, limit={limit})")
+    
+    # Base query
+    query = db.query(Coupon)
+    
+    # Apply filters
+    if is_active is not None:
+        query = query.filter(Coupon.is_active == is_active)
+    
+    if show_in_carousel is not None:
+        query = query.filter(Coupon.show_in_carousel == show_in_carousel)
+    
+    # Get total count
+    total_count = query.count()
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    coupons = query.order_by(Coupon.created_at.desc()).offset(offset).limit(limit).all()
+    
+    # Convert to response models
+    coupon_responses = [AdminCouponResponse.from_orm(coupon) for coupon in coupons]
+    
+    has_more = (offset + len(coupons)) < total_count
+    
+    logger.info(f"Returning {len(coupon_responses)} coupons (total: {total_count})")
+    
+    return AdminCouponListResponse(
+        coupons=coupon_responses,
+        total_count=total_count,
+        page=page,
+        limit=limit,
+        has_more=has_more
+    )
+
 

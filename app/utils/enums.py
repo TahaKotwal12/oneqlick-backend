@@ -80,9 +80,30 @@ class CouponType(str, Enum):
 # Notification related enums
 class NotificationType(str, Enum):
     """Notification types."""
-    ORDER_UPDATE = "order_update"
-    PROMOTION = "promotion"
-    SYSTEM = "system"
+    # Order related
+    ORDER_PLACED = "order_placed"
+    ORDER_CONFIRMED = "order_confirmed"
+    ORDER_PREPARING = "order_preparing"
+    ORDER_READY = "order_ready"
+    ORDER_PICKED_UP = "order_picked_up"
+    ORDER_OUT_FOR_DELIVERY = "order_out_for_delivery"
+    ORDER_DELIVERED = "order_delivered"
+    ORDER_CANCELLED = "order_cancelled"
+    
+    # Payment related
+    PAYMENT_SUCCESS = "payment_success"
+    PAYMENT_FAILED = "payment_failed"
+    REFUND_PROCESSED = "refund_processed"
+    
+    # Promotion related
+    NEW_COUPON = "new_coupon"
+    COUPON_EXPIRING = "coupon_expiring"
+    SPECIAL_OFFER = "special_offer"
+    
+    # System related
+    SYSTEM_ANNOUNCEMENT = "system_announcement"
+    ACCOUNT_UPDATE = "account_update"
+    SECURITY_ALERT = "security_alert"
 
 # Additional enums for enhanced functionality
 class AddressType(str, Enum):
