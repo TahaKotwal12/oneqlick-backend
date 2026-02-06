@@ -14,7 +14,7 @@ class Coupon(Base):
     code = Column(String(50), unique=True, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(String)
-    coupon_type = Column(Enum(CouponType), nullable=False)
+    coupon_type = Column(Enum(CouponType, values_callable=lambda x: [e.value for e in x], native_enum=True, name='coupontype'), nullable=False)
     discount_value = Column(DECIMAL(10, 2), nullable=False)
     min_order_amount = Column(DECIMAL(10, 2), default=0)
     max_discount_amount = Column(DECIMAL(10, 2))

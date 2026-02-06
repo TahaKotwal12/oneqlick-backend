@@ -307,3 +307,195 @@ class CarouselCouponsListResponse(BaseModel):
             }
         }
 
+
+# Admin Schemas
+class CreateCouponRequest(BaseModel):
+    """Request schema for creating a coupon (admin only)."""
+    code: str = Field(..., min_length=3, max_length=50, description="Unique coupon code")
+    title: str = Field(..., min_length=3, max_length=255, description="Coupon title")
+    description: Optional[str] = Field(None, description="Coupon description")
+    coupon_type: CouponType = Field(..., description="Type of coupon")
+    discount_value: Decimal = Field(..., gt=0, description="Discount value")
+    min_order_amount: Decimal = Field(..., ge=0, description="Minimum order amount")
+    max_discount_amount: Optional[Decimal] = Field(None, ge=0, description="Maximum discount amount")
+    usage_limit: Optional[int] = Field(None, gt=0, description="Maximum usage limit")
+    valid_from: datetime = Field(..., description="Coupon valid from date")
+    valid_until: datetime = Field(..., description="Coupon valid until date")
+    is_active: bool = Field(default=True, description="Whether coupon is active")
+    
+    # Carousel fields
+    show_in_carousel: bool = Field(default=False, description="Show in home carousel")
+    carousel_priority: int = Field(default=0, ge=0, le=100, description="Carousel display priority")
+    carousel_title: Optional[str] = Field(None, max_length=100, description="Carousel title")
+    carousel_subtitle: Optional[str] = Field(None, max_length=100, description="Carousel subtitle")
+    carousel_badge: Optional[str] = Field(None, max_length=50, description="Carousel badge text")
+    carousel_icon: Optional[str] = Field(None, max_length=50, description="Carousel icon name")
+    carousel_gradient_start: str = Field(default="#4F46E5", description="Gradient start color")
+    carousel_gradient_middle: str = Field(default="#6366F1", description="Gradient middle color")
+    carousel_gradient_end: str = Field(default="#818CF8", description="Gradient end color")
+    carousel_action_text: str = Field(default="Order Now", max_length=50, description="Action button text")
+
+    @validator('code')
+    def validate_code(cls, v):
+        if not v.isupper() or not v.replace('_', '').replace('-', '').isalnum():
+            raise ValueError('Code must be uppercase alphanumeric (can include _ and -)')
+        return v
+
+    @validator('valid_until')
+    def validate_dates(cls, v, values):
+        if 'valid_from' in values and v <= values['valid_from']:
+            raise ValueError('valid_until must be after valid_from')
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "code": "MEGA50",
+                "title": "50% OFF on first order",
+                "description": "Get 50% discount on your first order above ₹299",
+                "coupon_type": "percentage",
+                "discount_value": 50.00,
+                "min_order_amount": 299.00,
+                "max_discount_amount": 150.00,
+                "usage_limit": 1000,
+                "valid_from": "2026-02-06T00:00:00Z",
+                "valid_until": "2026-03-06T23:59:59Z",
+                "is_active": True,
+                "show_in_carousel": True,
+                "carousel_priority": 10,
+                "carousel_title": "MEGA SALE",
+                "carousel_subtitle": "Up to 50% OFF",
+                "carousel_badge": "LIMITED TIME",
+                "carousel_icon": "fire",
+                "carousel_gradient_start": "#4F46E5",
+                "carousel_gradient_middle": "#6366F1",
+                "carousel_gradient_end": "#818CF8",
+                "carousel_action_text": "Order Now"
+            }
+        }
+
+
+class UpdateCouponRequest(BaseModel):
+    """Request schema for updating a coupon (admin only)."""
+    code: Optional[str] = Field(None, min_length=3, max_length=50)
+    title: Optional[str] = Field(None, min_length=3, max_length=255)
+    description: Optional[str] = None
+    coupon_type: Optional[CouponType] = None
+    discount_value: Optional[Decimal] = Field(None, gt=0)
+    min_order_amount: Optional[Decimal] = Field(None, ge=0)
+    max_discount_amount: Optional[Decimal] = Field(None, ge=0)
+    usage_limit: Optional[int] = Field(None, gt=0)
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    is_active: Optional[bool] = None
+    
+    # Carousel fields
+    show_in_carousel: Optional[bool] = None
+    carousel_priority: Optional[int] = Field(None, ge=0, le=100)
+    carousel_title: Optional[str] = Field(None, max_length=100)
+    carousel_subtitle: Optional[str] = Field(None, max_length=100)
+    carousel_badge: Optional[str] = Field(None, max_length=50)
+    carousel_icon: Optional[str] = Field(None, max_length=50)
+    carousel_gradient_start: Optional[str] = None
+    carousel_gradient_middle: Optional[str] = None
+    carousel_gradient_end: Optional[str] = None
+    carousel_action_text: Optional[str] = Field(None, max_length=50)
+
+    @validator('code')
+    def validate_code(cls, v):
+        if v and (not v.isupper() or not v.replace('_', '').replace('-', '').isalnum()):
+            raise ValueError('Code must be uppercase alphanumeric (can include _ and -)')
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "carousel_priority": 20,
+                "is_active": False
+            }
+        }
+
+
+class AdminCouponResponse(BaseModel):
+    """Response schema for admin coupon operations."""
+    coupon_id: UUID
+    code: str
+    title: str
+    description: Optional[str]
+    coupon_type: CouponType
+    discount_value: Decimal
+    min_order_amount: Decimal
+    max_discount_amount: Optional[Decimal]
+    usage_limit: Optional[int]
+    used_count: int
+    valid_from: datetime
+    valid_until: datetime
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None  # Made optional for existing coupons
+    
+    # Carousel fields
+    show_in_carousel: bool
+    carousel_priority: int
+    carousel_title: Optional[str]
+    carousel_subtitle: Optional[str]
+    carousel_badge: Optional[str]
+    carousel_icon: Optional[str]
+    carousel_gradient_start: str
+    carousel_gradient_middle: str
+    carousel_gradient_end: str
+    carousel_action_text: str
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "coupon_id": "123e4567-e89b-12d3-a456-426614174000",
+                "code": "MEGA50",
+                "title": "50% OFF on first order",
+                "description": "Get 50% discount",
+                "coupon_type": "percentage",
+                "discount_value": 50.00,
+                "min_order_amount": 299.00,
+                "max_discount_amount": 150.00,
+                "usage_limit": 1000,
+                "used_count": 245,
+                "valid_from": "2026-02-06T00:00:00Z",
+                "valid_until": "2026-03-06T23:59:59Z",
+                "is_active": True,
+                "created_at": "2026-02-06T00:00:00Z",
+                "updated_at": None,
+                "show_in_carousel": True,
+                "carousel_priority": 10,
+                "carousel_title": "MEGA SALE",
+                "carousel_subtitle": "Up to 50% OFF",
+                "carousel_badge": "LIMITED TIME",
+                "carousel_icon": "fire",
+                "carousel_gradient_start": "#4F46E5",
+                "carousel_gradient_middle": "#6366F1",
+                "carousel_gradient_end": "#818CF8",
+                "carousel_action_text": "Order Now"
+            }
+        }
+
+
+class AdminCouponListResponse(BaseModel):
+    """Response schema for admin coupon list."""
+    coupons: List[AdminCouponResponse]
+    total_count: int
+    page: int
+    limit: int
+    has_more: bool
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "coupons": [],
+                "total_count": 25,
+                "page": 1,
+                "limit": 50,
+                "has_more": False
+            }
+        }
+
+
