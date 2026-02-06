@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from decimal import Decimal
 
-from app.infra.db.postgres.database import get_db
+from app.infra.db.postgres.postgres_config import get_db
 from app.services.pricing_service import PricingService
 from app.api.schemas.pricing_schemas import (
     PricingConfigResponse,
