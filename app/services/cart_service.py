@@ -15,13 +15,17 @@ from app.infra.db.postgres.models.cart_item import CartItem
 from app.infra.db.postgres.models.food_item import FoodItem
 from app.infra.db.postgres.models.food_variant import FoodVariant
 from app.infra.db.postgres.models.restaurant import Restaurant
+from app.infra.db.postgres.models.address import Address
+from app.services.pricing_service import PricingService
+from app.utils.order_utils import calculate_distance
 from app.api.schemas.cart_schemas import (
     AddCartItemRequest,
     UpdateCartItemRequest,
     CartResponse,
     CartItemResponse,
     RestaurantBasicInfo,
-    CartSummaryResponse
+    CartSummaryResponse,
+    CartWithPricingResponse
 )
 import logging
 
@@ -371,3 +375,85 @@ class CartService:
             subtotal=subtotal,
             restaurant_name=restaurant.name if restaurant else "Unknown"
         )
+    
+    @staticmethod
+    def build_cart_with_pricing(
+        db: Session,
+        cart: Cart,
+        address_id: Optional[UUID] = None
+    ) -> CartWithPricingResponse:
+        """
+        Build cart response with pricing calculations using PricingService.
+        
+        Args:
+            db: Database session
+            cart: Cart object
+            address_id: Optional delivery address for distance-based delivery fee
+            
+        Returns:
+            CartWithPricingResponse with all pricing calculated
+        """
+        # Get basic cart response
+        cart_response = CartService.build_cart_response(db, cart)
+        
+        # Calculate subtotal
+        subtotal = cart_response.subtotal
+        
+        # Calculate distance if address provided
+        distance_km = 0.0
+        if address_id:
+            try:
+                # Get user address
+                address = db.query(Address).filter(
+                    Address.address_id == address_id
+                ).first()
+                
+                # Get restaurant
+                restaurant = db.query(Restaurant).filter(
+                    Restaurant.restaurant_id == cart.restaurant_id
+                ).first()
+                
+                if address and restaurant and address.latitude and address.longitude:
+                    distance_km = calculate_distance(
+                        float(address.latitude),
+                        float(address.longitude),
+                        float(restaurant.latitude),
+                        float(restaurant.longitude)
+                    )
+                    logger.info(f"Calculated distance: {distance_km}km for cart {cart.cart_id}")
+            except Exception as e:
+                logger.warning(f"Error calculating distance for cart {cart.cart_id}: {str(e)}")
+                distance_km = 0.0
+        
+        # Use PricingService for all calculations
+        delivery_fee = PricingService.calculate_delivery_fee(db, distance_km, subtotal)
+        platform_fee = PricingService.calculate_platform_fee(db, subtotal)
+        tax_amount = PricingService.calculate_tax(db, subtotal)
+        
+        # Calculate total
+        discount_amount = Decimal('0.00')  # TODO: Add coupon support
+        total_amount = subtotal + delivery_fee + platform_fee + tax_amount - discount_amount
+        
+        # Ensure total is not negative
+        if total_amount < Decimal('0.00'):
+            total_amount = Decimal('0.00')
+        
+        # Build response with pricing
+        return CartWithPricingResponse(
+            cart_id=cart_response.cart_id,
+            user_id=cart_response.user_id,
+            restaurant_id=cart_response.restaurant_id,
+            restaurant=cart_response.restaurant,
+            items=cart_response.items,
+            item_count=cart_response.item_count,
+            subtotal=subtotal,
+            tax_amount=tax_amount,
+            delivery_fee=delivery_fee,
+            platform_fee=platform_fee,
+            discount_amount=discount_amount,
+            total_amount=total_amount,
+            distance_km=distance_km if distance_km > 0 else None,
+            created_at=cart_response.created_at,
+            updated_at=cart_response.updated_at
+        )
+

@@ -2,7 +2,7 @@
 Cart API Routes
 Endpoints for cart management
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from uuid import UUID
@@ -17,7 +17,8 @@ from app.api.schemas.cart_schemas import (
     RemoveCartItemRequest,
     CartResponse,
     CartItemAddedResponse,
-    CartSummaryResponse
+    CartSummaryResponse,
+    CartWithPricingResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
 import logging
@@ -334,4 +335,61 @@ async def get_cart_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get cart summary: {str(e)}"
+        )
+
+
+@router.get("/with-pricing", response_model=CommonResponse[CartWithPricingResponse])
+async def get_cart_with_pricing(
+    address_id: Optional[UUID] = Query(None, description="Delivery address for distance-based delivery fee calculation"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get cart with calculated pricing using PricingService.
+    
+    This endpoint returns the cart with all pricing calculated dynamically from the database:
+    - Subtotal: Sum of all cart items
+    - Tax: Calculated using tax_rate from pricing_config
+    - Delivery Fee: 
+        - If address_id provided: Distance-based fee using pricing_config rates
+        - If no address: Base delivery fee from pricing_config
+        - Free if subtotal >= free_delivery_threshold
+    - Platform Fee: Calculated using pricing_config (fixed or percentage)
+    - Total: Sum of all fees
+    
+    This ensures consistent pricing across cart, checkout, and payment.
+    """
+    try:
+        logger.info(f"Getting cart with pricing for user {current_user.user_id}, address: {address_id}")
+        
+        # Get user's cart
+        cart = CartService.get_cart(db, current_user.user_id)
+        
+        if not cart:
+            return CommonResponse(
+                code=200,
+                message="No active cart",
+                message_id="NO_CART",
+                data=None
+            )
+        
+        # Build cart with pricing
+        cart_with_pricing = CartService.build_cart_with_pricing(
+            db=db,
+            cart=cart,
+            address_id=address_id
+        )
+        
+        return CommonResponse(
+            code=200,
+            message="Cart retrieved with pricing",
+            message_id="CART_WITH_PRICING_RETRIEVED",
+            data=cart_with_pricing
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting cart with pricing: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get cart with pricing: {str(e)}"
         )

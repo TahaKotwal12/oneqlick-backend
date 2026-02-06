@@ -144,6 +144,35 @@ class CartResponse(BaseModel):
         }
 
 
+class CartWithPricingResponse(BaseModel):
+    """Cart response with calculated pricing using PricingService"""
+    cart_id: UUID
+    user_id: UUID
+    restaurant_id: UUID
+    restaurant: RestaurantBasicInfo
+    items: List[CartItemResponse]
+    item_count: int
+    
+    # Pricing breakdown
+    subtotal: Decimal
+    tax_amount: Decimal
+    delivery_fee: Decimal
+    platform_fee: Decimal
+    discount_amount: Decimal
+    total_amount: Decimal
+    
+    # Metadata
+    distance_km: Optional[float] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
 class CartSummaryResponse(BaseModel):
     """Quick cart summary"""
     cart_id: UUID
