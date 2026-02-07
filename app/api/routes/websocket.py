@@ -4,7 +4,7 @@ import json
 import logging
 from app.utils.auth_utils import AuthUtils
 from app.infra.db.postgres.models.user import User
-from app.infra.db.postgres.database import get_db
+from app.infra.db.postgres.postgres_config import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
