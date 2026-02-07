@@ -74,8 +74,8 @@ class CartItemResponse(BaseModel):
     unit_price: Decimal
     total_price: Decimal
     special_instructions: Optional[str] = None
-    is_veg: bool
-    is_available: bool
+    is_veg: bool = True
+    is_available: bool = True  # Default to True since FoodItem model doesn't have this field
     
     class Config:
         from_attributes = True
