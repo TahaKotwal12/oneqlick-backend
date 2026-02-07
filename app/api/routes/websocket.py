@@ -141,6 +141,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
             return
         
+        # Close any existing connection for this user before adding new one
+        if user_id in manager.active_connections:
+            try:
+                old_websocket = manager.active_connections[user_id]
+                logger.info(f"🔄 Closing old WebSocket connection for user {user_id}")
+                await old_websocket.close(code=status.WS_1000_NORMAL_CLOSURE, reason="New connection established")
+            except Exception as e:
+                logger.debug(f"Error closing old connection: {e}")
+        
         # Add to connection manager
         manager.active_connections[user_id] = websocket
         logger.info(f"✅ User {user_id} connected to WebSocket. Total connections: {len(manager.active_connections)}")
@@ -165,14 +174,20 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 logger.debug(f"Received message from {user_id}: {data}")
                 
     except WebSocketDisconnect:
-        if user_id:
+        # Only disconnect if this is still the active connection
+        if user_id and manager.active_connections.get(user_id) == websocket:
             manager.disconnect(user_id)
-        logger.info(f"🔌 WebSocket disconnected for user {user_id}")
+            logger.info(f"🔌 WebSocket disconnected for user {user_id}")
+        else:
+            logger.debug(f"🔌 Old WebSocket connection closed for user {user_id} (replaced by new connection)")
         
     except Exception as e:
-        if user_id:
+        # Only disconnect if this is still the active connection
+        if user_id and manager.active_connections.get(user_id) == websocket:
             manager.disconnect(user_id)
-        logger.error(f"❌ WebSocket error for user {user_id}: {e}")
+            logger.error(f"❌ WebSocket error for user {user_id}: {e}")
+        else:
+            logger.debug(f"❌ Old WebSocket connection error for user {user_id}: {e}")
         try:
             await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error")
         except:
