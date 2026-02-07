@@ -261,6 +261,50 @@ async def delete_notification(
         )
 
 
+@router.post("/test-send", response_model=CommonResponse[NotificationResponse])
+async def send_test_notification(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Send a test notification to yourself for testing WebSocket real-time delivery.
+    
+    **Authentication:** Required (sends notification to current user)
+    
+    **Returns:**
+    - Created test notification
+    
+    **Note:** This endpoint is for testing real-time WebSocket notifications.
+    The notification should appear instantly in your app without refreshing!
+    """
+    from datetime import datetime
+    
+    try:
+        notification = NotificationService.create_notification(
+            db=db,
+            user_id=current_user.user_id,
+            title="🚀 Real-Time Test!",
+            message=f"This notification was sent at {datetime.now().strftime('%H:%M:%S')} via WebSocket! If you see this instantly, real-time notifications are working! 🎉",
+            notification_type=NotificationType.SYSTEM_ANNOUNCEMENT
+        )
+        
+        logger.info(f"Test notification sent to user {current_user.user_id}")
+        
+        return CommonResponse(
+            code=status.HTTP_201_CREATED,
+            message="Test notification sent! Check your app - it should appear instantly!",
+            message_id="TEST_NOTIFICATION_SENT",
+            data=NotificationResponse.model_validate(notification)
+        )
+        
+    except Exception as e:
+        logger.error(f"Error sending test notification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send test notification"
+        )
+
+
 # ============================================
 # ADMIN NOTIFICATION ENDPOINTS
 # ============================================
