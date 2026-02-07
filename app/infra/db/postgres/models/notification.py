@@ -11,7 +11,7 @@ class Notification(Base):
     __tablename__ = 'core_mstr_one_qlick_notifications_tbl'
 
     notification_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl(user_id)'))
+    user_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id'))
     title = Column(String(255), nullable=False)
     message = Column(String, nullable=False)
     notification_type = Column(Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), default=NotificationType.SYSTEM_ANNOUNCEMENT)
