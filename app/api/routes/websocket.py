@@ -106,16 +106,39 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     Usage:
     ws://localhost:8000/api/v1/ws/notifications?token=YOUR_ACCESS_TOKEN
     """
-    user = None
     user_id = None
     
     try:
-        # Authenticate user
-        user = await authenticate_websocket(token)
-        user_id = str(user.user_id)
+        # Accept WebSocket connection first
+        await websocket.accept()
         
-        # Connect user
-        await manager.connect(user_id, websocket)
+        # Then authenticate
+        try:
+            payload = AuthUtils.decode_access_token(token)
+            user_id_from_token = payload.get("user_id")
+            
+            if not user_id_from_token:
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+                return
+            
+            # Get user from database
+            db = next(get_db())
+            user = db.query(User).filter(User.user_id == user_id_from_token).first()
+            
+            if not user:
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found")
+                return
+                
+            user_id = str(user.user_id)
+            
+        except Exception as e:
+            logger.error(f"❌ WebSocket authentication failed: {e}")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+            return
+        
+        # Add to connection manager
+        manager.active_connections[user_id] = websocket
+        logger.info(f"✅ User {user_id} connected to WebSocket. Total connections: {len(manager.active_connections)}")
         
         # Send welcome message
         await websocket.send_json({
@@ -132,7 +155,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             # Handle heartbeat
             if data == "ping":
                 await websocket.send_text("pong")
-                logger.debug(f"Heartbeat from user {user_id}")
+                logger.debug(f"💓 Heartbeat from user {user_id}")
             else:
                 logger.debug(f"Received message from {user_id}: {data}")
                 
@@ -141,15 +164,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             manager.disconnect(user_id)
         logger.info(f"🔌 WebSocket disconnected for user {user_id}")
         
-    except HTTPException as e:
-        logger.error(f"❌ WebSocket authentication error: {e.detail}")
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=e.detail)
-        
     except Exception as e:
         if user_id:
             manager.disconnect(user_id)
         logger.error(f"❌ WebSocket error for user {user_id}: {e}")
-        await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error")
+        try:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error")
+        except:
+            pass
 
 
 @router.get("/ws/stats")
