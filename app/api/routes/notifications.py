@@ -97,9 +97,11 @@ async def get_notifications(
         
     except Exception as e:
         logger.error(f"Error fetching notifications: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Exception details: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch notifications"
+            detail=f"Failed to fetch notifications: {str(e)}"
         )
 
 
