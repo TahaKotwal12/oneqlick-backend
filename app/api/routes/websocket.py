@@ -114,7 +114,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         
         # Then authenticate
         try:
-            payload = AuthUtils.decode_access_token(token)
+            payload = AuthUtils.verify_jwt_token(token)
+            
+            if not payload:
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token")
+                return
+                
             user_id_from_token = payload.get("user_id")
             
             if not user_id_from_token:
