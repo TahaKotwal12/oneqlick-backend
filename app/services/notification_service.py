@@ -76,10 +76,24 @@ class NotificationService:
                     "data_json": notification.data_json
                 }
                 
-                # Send notification via WebSocket (non-blocking)
-                asyncio.create_task(
-                    manager.send_notification(str(user_id), notification_dict)
-                )
+                # Check if user is connected
+                if manager.is_user_connected(str(user_id)):
+                    # Send notification via WebSocket (synchronous in async context)
+                    try:
+                        # Get or create event loop
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        
+                        # Run the async send_notification in the loop
+                        loop.create_task(manager.send_notification(str(user_id), notification_dict))
+                        logger.info(f"📬 Queued WebSocket notification for user {user_id}")
+                    except Exception as send_error:
+                        logger.warning(f"Failed to queue WebSocket notification: {send_error}")
+                else:
+                    logger.debug(f"User {user_id} not connected to WebSocket, skipping real-time send")
                 
             except Exception as ws_error:
                 # Log WebSocket error but don't fail notification creation
