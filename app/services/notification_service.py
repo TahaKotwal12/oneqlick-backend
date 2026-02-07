@@ -59,6 +59,32 @@ class NotificationService:
             db.refresh(notification)
             
             logger.info(f"Created notification {notification.notification_id} for user {user_id}")
+            
+            # Send via WebSocket if user is connected
+            try:
+                from app.api.routes.websocket import manager
+                import asyncio
+                
+                notification_dict = {
+                    "notification_id": str(notification.notification_id),
+                    "user_id": str(notification.user_id),
+                    "title": notification.title,
+                    "message": notification.message,
+                    "notification_type": notification.notification_type.value,
+                    "created_at": notification.created_at.isoformat(),
+                    "is_read": notification.is_read,
+                    "data_json": notification.data_json
+                }
+                
+                # Send notification via WebSocket (non-blocking)
+                asyncio.create_task(
+                    manager.send_notification(str(user_id), notification_dict)
+                )
+                
+            except Exception as ws_error:
+                # Log WebSocket error but don't fail notification creation
+                logger.warning(f"Failed to send WebSocket notification: {ws_error}")
+            
             return notification
             
         except Exception as e:

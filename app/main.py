@@ -106,6 +106,10 @@ app.include_router(payments.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(pricing.router, prefix="/api/v1")
 
+# WebSocket routes
+from app.api.routes import websocket
+app.include_router(websocket.router, prefix="/api/v1")
+
 
 # Initialize Redis connection
 try:
