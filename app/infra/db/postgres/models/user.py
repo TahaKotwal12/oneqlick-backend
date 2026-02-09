@@ -27,6 +27,3 @@ class User(Base):
     loyalty_points = Column(Integer, default=0)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
-    
-    # Relationships
-    push_tokens = relationship("UserPushToken", back_populates="user", cascade="all, delete-orphan")

@@ -17,7 +17,7 @@ class UserPushToken(Base):
     is_active = Column(Boolean, default=True)
 
     # Relationship to User
-    user = relationship("User", back_populates="push_tokens")
+    user = relationship("User")
 
     __table_args__ = (
         CheckConstraint("device_type IN ('ios', 'android')", name="check_device_type"),
