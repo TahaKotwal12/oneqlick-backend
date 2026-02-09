@@ -61,6 +61,7 @@ class NotificationService:
             logger.info(f"Created notification {notification.notification_id} for user {user_id}")
             
             # Send via WebSocket if user is connected
+            websocket_sent = False
             try:
                 from app.api.routes.websocket import manager
                 import asyncio
@@ -90,6 +91,7 @@ class NotificationService:
                         # Run the async send_notification in the loop
                         loop.create_task(manager.send_notification(str(user_id), notification_dict))
                         logger.info(f"📬 Queued WebSocket notification for user {user_id}")
+                        websocket_sent = True
                     except Exception as send_error:
                         logger.warning(f"Failed to queue WebSocket notification: {send_error}")
                 else:
@@ -98,6 +100,40 @@ class NotificationService:
             except Exception as ws_error:
                 # Log WebSocket error but don't fail notification creation
                 logger.warning(f"Failed to send WebSocket notification: {ws_error}")
+            
+            # Send push notification if WebSocket wasn't sent or as backup
+            try:
+                from app.services.push_notification_service import push_service
+                import asyncio
+                
+                # Get or create event loop
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Send push notification asynchronously
+                push_data = {
+                    "notification_id": str(notification.notification_id),
+                    "type": notification_type.value
+                }
+                if data_json:
+                    push_data.update(data_json)
+                
+                loop.create_task(
+                    push_service.send_to_user(
+                        db=db,
+                        user_id=str(user_id),
+                        title=title,
+                        message=message,
+                        data=push_data
+                    )
+                )
+                logger.info(f"📱 Queued push notification for user {user_id}")
+                
+            except Exception as push_error:
+                logger.warning(f"Failed to send push notification: {push_error}")
             
             return notification
             

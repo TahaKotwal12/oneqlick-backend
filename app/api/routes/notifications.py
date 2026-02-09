@@ -424,9 +424,9 @@ async def get_notification_stats(
         stats = NotificationService.get_notification_stats(db)
         
         return CommonResponse(
-            code=status.HTTP_200_OK,
-            message="Notification statistics retrieved successfully",
-            message_id="NOTIFICATION_STATS_RETRIEVED",
+            code=200,
+            message="Notification stats retrieved successfully",
+            message_id="NOTIFICATION_STATS_SUCCESS",
             data=NotificationStatsResponse(
                 total_notifications=stats["total_notifications"],
                 total_sent_today=stats["total_sent_today"],
@@ -444,3 +444,159 @@ async def get_notification_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get notification statistics"
         )
+
+
+# ============================================
+# PUSH NOTIFICATION TOKEN ENDPOINTS
+# ============================================
+
+@router.post("/register-token", response_model=CommonResponse)
+async def register_push_token(
+    push_token: str,
+    device_type: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Register a push notification token for the current user.
+    
+    **Authentication:** Required
+    
+    **Request Body:**
+    - `push_token`: Expo push token (ExponentPushToken[...])
+    - `device_type`: Device platform ('ios' or 'android')
+    """
+    from app.infra.db.postgres.models.user_push_token import UserPushToken
+    from datetime import datetime
+    
+    # Validate device type
+    if device_type not in ['ios', 'android']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid device type. Must be 'ios' or 'android'"
+        )
+    
+    try:
+        # Check if token already exists
+        existing_token = db.query(UserPushToken).filter(
+            UserPushToken.push_token == push_token
+        ).first()
+        
+        if existing_token:
+            # Update existing token
+            existing_token.user_id = current_user.user_id
+            existing_token.device_type = device_type
+            existing_token.is_active = True
+            existing_token.last_used_at = datetime.utcnow()
+            logger.info(f"📱 Updated push token for user {current_user.user_id}")
+        else:
+            # Create new token
+            new_token = UserPushToken(
+                user_id=current_user.user_id,
+                push_token=push_token,
+                device_type=device_type
+            )
+            db.add(new_token)
+            logger.info(f"📱 Registered new push token for user {current_user.user_id}")
+        
+        db.commit()
+        
+        return CommonResponse(
+            code=200,
+            message="Push token registered successfully",
+            message_id="PUSH_TOKEN_REGISTERED"
+        )
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error registering push token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to register push token"
+        )
+
+
+@router.delete("/unregister-token", response_model=CommonResponse)
+async def unregister_push_token(
+    push_token: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Unregister a push notification token (e.g., on logout).
+    
+    **Authentication:** Required
+    
+    **Query Parameters:**
+    - `push_token`: The token to unregister
+    """
+    from app.infra.db.postgres.models.user_push_token import UserPushToken
+    
+    try:
+        # Find and deactivate the token
+        token = db.query(UserPushToken).filter(
+            UserPushToken.push_token == push_token,
+            UserPushToken.user_id == current_user.user_id
+        ).first()
+        
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Push token not found"
+            )
+        
+        token.is_active = False
+        db.commit()
+        
+        logger.info(f"📱 Unregistered push token for user {current_user.user_id}")
+        
+        return CommonResponse(
+            code=200,
+            message="Push token unregistered successfully",
+            message_id="PUSH_TOKEN_UNREGISTERED"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error unregistering push token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unregister push token"
+        )
+
+
+@router.get("/my-tokens", response_model=CommonResponse)
+async def get_my_push_tokens(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all active push tokens for the current user.
+    
+    **Authentication:** Required
+    """
+    from app.infra.db.postgres.models.user_push_token import UserPushToken
+    
+    tokens = db.query(UserPushToken).filter(
+        UserPushToken.user_id == current_user.user_id,
+        UserPushToken.is_active == True
+    ).all()
+    
+    token_data = [
+        {
+            "token_id": str(token.token_id),
+            "device_type": token.device_type,
+            "created_at": token.created_at.isoformat(),
+            "last_used_at": token.last_used_at.isoformat() if token.last_used_at else None
+        }
+        for token in tokens
+    ]
+    
+    return CommonResponse(
+        code=200,
+        message="Push tokens retrieved successfully",
+        message_id="PUSH_TOKENS_RETRIEVED",
+        data={"tokens": token_data, "count": len(token_data)}
+    )

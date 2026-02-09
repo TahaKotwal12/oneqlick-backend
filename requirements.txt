@@ -10,6 +10,7 @@ pydantic[email]>=2.0.2,<3.0.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 httpx==0.28.1
+requests==2.31.0  # Required for Expo push notifications
 jinja2==3.1.2
 bcrypt==4.3.0
 cryptography==42.0.0
