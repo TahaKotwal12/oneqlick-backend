@@ -512,7 +512,7 @@ async def register_push_token(
         logger.error(f"Error registering push token: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to register push token"
+            detail=f"Failed to register push token: {str(e)}"
         )
 
 
