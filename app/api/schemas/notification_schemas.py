@@ -27,6 +27,12 @@ class BroadcastNotificationRequest(BaseModel):
     data_json: Optional[dict] = Field(None, description="Additional data as JSON")
 
 
+class RegisterPushTokenRequest(BaseModel):
+    """Request schema for registering a push token."""
+    push_token: str = Field(..., description="Expo push token")
+    device_type: str = Field(..., pattern="^(ios|android)$", description="Device platform ('ios' or 'android')")
+
+
 class MarkAsReadRequest(BaseModel):
     """Request schema for marking notification as read."""
     notification_id: UUID4 = Field(..., description="Notification ID to mark as read")

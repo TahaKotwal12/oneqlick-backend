@@ -452,8 +452,7 @@ async def get_notification_stats(
 
 @router.post("/register-token", response_model=CommonResponse)
 async def register_push_token(
-    push_token: str,
-    device_type: str,
+    request: RegisterPushTokenRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -479,13 +478,13 @@ async def register_push_token(
     try:
         # Check if token already exists
         existing_token = db.query(UserPushToken).filter(
-            UserPushToken.push_token == push_token
+            UserPushToken.push_token == request.push_token
         ).first()
         
         if existing_token:
             # Update existing token
             existing_token.user_id = current_user.user_id
-            existing_token.device_type = device_type
+            existing_token.device_type = request.device_type
             existing_token.is_active = True
             existing_token.last_used_at = datetime.utcnow()
             logger.info(f"📱 Updated push token for user {current_user.user_id}")
@@ -493,8 +492,8 @@ async def register_push_token(
             # Create new token
             new_token = UserPushToken(
                 user_id=current_user.user_id,
-                push_token=push_token,
-                device_type=device_type
+                push_token=request.push_token,
+                device_type=request.device_type
             )
             db.add(new_token)
             logger.info(f"📱 Registered new push token for user {current_user.user_id}")
