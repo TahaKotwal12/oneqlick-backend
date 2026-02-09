@@ -606,8 +606,8 @@ async def get_my_push_tokens(
 # TEST ENDPOINT FOR PUSH NOTIFICATIONS
 # ============================================
 
-@router.post("/test-send", response_model=CommonResponse)
-async def test_send_notification(
+@router.post("/test-push", response_model=CommonResponse)
+async def test_push_notification(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
