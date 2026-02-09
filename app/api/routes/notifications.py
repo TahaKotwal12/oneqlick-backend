@@ -600,3 +600,49 @@ async def get_my_push_tokens(
         message_id="PUSH_TOKENS_RETRIEVED",
         data={"tokens": token_data, "count": len(token_data)}
     )
+
+
+# ============================================
+# TEST ENDPOINT FOR PUSH NOTIFICATIONS
+# ============================================
+
+@router.post("/test-send", response_model=CommonResponse)
+async def test_send_notification(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Send a test notification to the current user (for testing push notifications).
+    
+    **Authentication:** Required
+    """
+    try:
+        # Create a test notification using the service (which triggers push notifications)
+        notification = NotificationService.create_notification(
+            db=db,
+            user_id=current_user.user_id,
+            title="Test Push Notification",
+            message="This is a test notification to verify push notifications are working!",
+            notification_type=NotificationType.SYSTEM_ANNOUNCEMENT,
+            data_json={"test": True}
+        )
+        
+        logger.info(f"📱 Test notification sent to user {current_user.user_id}")
+        
+        return CommonResponse(
+            code=200,
+            message="Test notification sent successfully! Check your phone.",
+            message_id="TEST_NOTIFICATION_SENT",
+            data={
+                "notification_id": str(notification.notification_id),
+                "title": notification.title,
+                "message": notification.message
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error sending test notification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send test notification: {str(e)}"
+        )
