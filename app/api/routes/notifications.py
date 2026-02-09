@@ -470,7 +470,7 @@ async def register_push_token(
     from datetime import datetime
     
     # Validate device type
-    if device_type not in ['ios', 'android']:
+    if request.device_type not in ['ios', 'android']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid device type. Must be 'ios' or 'android'"
@@ -504,7 +504,8 @@ async def register_push_token(
         return CommonResponse(
             code=200,
             message="Push token registered successfully",
-            message_id="PUSH_TOKEN_REGISTERED"
+            message_id="PUSH_TOKEN_REGISTERED",
+            data={}
         )
         
     except Exception as e:
@@ -553,7 +554,8 @@ async def unregister_push_token(
         return CommonResponse(
             code=200,
             message="Push token unregistered successfully",
-            message_id="PUSH_TOKEN_UNREGISTERED"
+            message_id="PUSH_TOKEN_UNREGISTERED",
+            data={}
         )
         
     except HTTPException:
