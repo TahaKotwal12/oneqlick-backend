@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.infra.db.postgres.base import Base
 
 class SearchHistory(Base):
     """Model for tracking user search history"""
