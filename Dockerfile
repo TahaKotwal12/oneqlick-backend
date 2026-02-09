@@ -1,35 +1,87 @@
-# Build stage
-FROM python:3.13-slim AS builder
+# ============================================
+# OneQlick Backend - Production Dockerfile
+# ============================================
+# Multi-stage build for optimized image size
+# Supports Railway and AWS ECS deployment
+
+# ============================================
+# Stage 1: Builder
+# ============================================
+FROM python:3.12-slim AS builder
+
+# Set working directory
 WORKDIR /app
 
-# Install build dependencies
+# Install system dependencies for building Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY requirements.txt .
 
-# Install dependencies using uv
-RUN pip install uv && \
-    uv pip install --system .
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Final stage
-FROM python:3.13-slim
+# ============================================
+# Stage 2: Runtime
+# ============================================
+FROM python:3.12-slim
+
+# Set labels for metadata
+LABEL maintainer="OneQlick Team"
+LABEL description="OneQlick Food Delivery Backend API"
+LABEL version="1.0.0"
+
+# Set working directory
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages/ /usr/local/lib/python3.13/site-packages/
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY app/ ./app/
+COPY scripts/ ./scripts/
+
+# Create necessary directories
+RUN mkdir -p logs uploads && \
+    chown -R appuser:appuser /app
 
 # Set environment variables
 ENV PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
 
-# Expose port
-EXPOSE 8000
+# Switch to non-root user
+USER appuser
 
-# Run the application
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose port (configurable via environment)
+EXPOSE ${PORT}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Run the application with gunicorn for production
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "300", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info"]

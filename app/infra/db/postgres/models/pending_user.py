@@ -20,6 +20,11 @@ class PendingUser(Base):
     profile_image = Column(String(500))
     date_of_birth = Column(Date)
     gender = Column(Enum(Gender))
+    # Partner-specific data stored in separate tables (Restaurant, DeliveryPartner)
+    restaurant_name = Column(String(255))  # Temporary storage until restaurant is created
+    cuisine_type = Column(String(100))  # Temporary storage until restaurant is created
+    vehicle_type = Column(String(50))  # Temporary storage until delivery partner is created
+    license_number = Column(String(50))  # Temporary storage until delivery partner is created
     verification_token = Column(String(255), unique=True, nullable=False)  # For email verification
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)  # Token expiration
     is_verified = Column(Boolean, default=False)

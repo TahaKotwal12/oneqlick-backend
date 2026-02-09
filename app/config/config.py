@@ -25,6 +25,7 @@ REDIS_CONFIG = {
     "host": os.getenv("REDIS_HOST", "localhost"),
     "port": int(os.getenv("REDIS_PORT", 6379)),
     "password": os.getenv("REDIS_PASSWORD", ""),
+    "use_tls": os.getenv("REDIS_USE_TLS", "false").lower() == "true",  # For Upstash/Cloud Redis
     "ttl": int(os.getenv("REDIS_TTL", 300)),
     "namespace": os.getenv("REDIS_NAMESPACE", "oneqlick"),
     "timeout": int(os.getenv("REDIS_TIMEOUT_MS", 10000)),
@@ -72,11 +73,15 @@ NOTIFICATION_CONFIG = {
 # Google OAuth Configuration
 GOOGLE_OAUTH_CONFIG = {
     "client_id": os.getenv("GOOGLE_CLIENT_ID", "1024710005377-603b3r4u26tgehu0nc1d9frjb1j0v1u9.apps.googleusercontent.com"),
-    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),  # Required - no default for security
     "project_id": os.getenv("GOOGLE_PROJECT_ID", "pragmatic-braid-445409-h4"),
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "redirect_uris": [
+        "oneqlick://auth/callback",  # Mobile app redirect
+        "http://localhost:8081",      # Development
+    ]
 }
 
 # Security Configuration
@@ -98,8 +103,39 @@ UPLOAD_CONFIG = {
 
 # Rate Limiting Configuration
 RATE_LIMIT_CONFIG = {
-    "requests": int(os.getenv("RATE_LIMIT_REQUESTS", "100")),
-    "window": int(os.getenv("RATE_LIMIT_WINDOW", "3600")),  # 1 hour
+    # Enable/disable rate limiting
+    "enabled": os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true",
+    
+    # Storage backend: "redis" for production, "memory" for development
+    "storage": os.getenv("RATE_LIMIT_STORAGE", "redis" if APP_ENV == "production" else "memory"),
+    
+    # Global limits (per IP address)
+    "global_per_hour": int(os.getenv("RATE_LIMIT_GLOBAL_PER_HOUR", "1000")),
+    
+    # Authentication endpoints (per IP address)
+    "auth_login_per_minute": int(os.getenv("RATE_LIMIT_AUTH_LOGIN_PER_MINUTE", "10")),
+    "auth_signup_per_minute": int(os.getenv("RATE_LIMIT_AUTH_SIGNUP_PER_MINUTE", "5")),
+    "auth_otp_per_minute": int(os.getenv("RATE_LIMIT_AUTH_OTP_PER_MINUTE", "5")),
+    "auth_password_reset_per_minute": int(os.getenv("RATE_LIMIT_AUTH_PASSWORD_RESET_PER_MINUTE", "3")),
+    
+    # Public endpoints (per IP address)
+    "public_per_minute": int(os.getenv("RATE_LIMIT_PUBLIC_PER_MINUTE", "100")),
+    
+    # Search endpoints (per IP address - expensive operations)
+    "search_per_minute": int(os.getenv("RATE_LIMIT_SEARCH_PER_MINUTE", "50")),
+    
+    # Authenticated user endpoints (per user ID)
+    "user_per_minute": int(os.getenv("RATE_LIMIT_USER_PER_MINUTE", "200")),
+    "user_order_placement_per_minute": int(os.getenv("RATE_LIMIT_USER_ORDER_PLACEMENT_PER_MINUTE", "10")),
+    
+    # Admin endpoints (per user ID)
+    "admin_per_minute": int(os.getenv("RATE_LIMIT_ADMIN_PER_MINUTE", "500")),
+    
+    # Partner endpoints (per user ID)
+    "partner_per_minute": int(os.getenv("RATE_LIMIT_PARTNER_PER_MINUTE", "300")),
+    
+    # Whitelist IPs (comma-separated, e.g., monitoring tools, health checks)
+    "whitelist": os.getenv("RATE_LIMIT_WHITELIST", "127.0.0.1,::1").split(","),
 }
 
 # Email Configuration
@@ -142,6 +178,11 @@ def validate_config():
     if APP_ENV == "production" and DEBUG:
         errors.append("DEBUG should be False in production")
     
+    # Validate Google OAuth configuration
+    if APP_ENV == "production" and not GOOGLE_OAUTH_CONFIG.get("client_secret"):
+        errors.append("GOOGLE_CLIENT_SECRET must be set in production for Google OAuth to work")
+
+    
     if errors:
         logger.warning("Configuration validation warnings:")
         for error in errors:
@@ -151,3 +192,35 @@ def validate_config():
 
 # Validate configuration on import
 validate_config()
+
+
+# Settings class for easy access
+class Settings:
+    """Application settings"""
+    # Database
+    DATABASE_URL = DATABASE_URL
+    
+    # App
+    SECRET_KEY = SECRET_KEY
+    DEBUG = DEBUG
+    APP_ENV = APP_ENV
+    
+    # JWT
+    JWT_SECRET_KEY = JWT_SECRET_KEY
+    JWT_ALGORITHM = JWT_ALGORITHM
+    JWT_EXPIRATION_HOURS = JWT_EXPIRATION_HOURS
+    
+    # Razorpay
+    RAZORPAY_KEY_ID = PAYMENT_CONFIG["razorpay_key_id"]
+    RAZORPAY_KEY_SECRET = PAYMENT_CONFIG["razorpay_key_secret"]
+    RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
+    
+    # CORS
+    CORS_ORIGINS = CORS_ORIGINS
+    
+    # Redis
+    REDIS_CONFIG = REDIS_CONFIG
+
+
+settings = Settings()
+

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Integer
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -13,6 +13,10 @@ class Category(Base):
     name = Column(String(100), nullable=False)
     description = Column(String)
     image = Column(String(500))
+    icon = Column(String(100))  # Icon name for frontend
+    color = Column(String(20))  # Hex color code
     is_active = Column(Boolean, default=True)
+    show_on_home = Column(Boolean, default=False)  # Show on home/search screens
     sort_order = Column(Integer, default=0)
+    search_vector = Column(TSVECTOR)  # For full-text search
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)

@@ -35,7 +35,11 @@ class PendingUserUtils:
         role: str = UserRole.CUSTOMER.value,
         profile_image: Optional[str] = None,
         date_of_birth: Optional[datetime] = None,
-        gender: Optional[str] = None
+        gender: Optional[str] = None,
+        restaurant_name: Optional[str] = None,
+        cuisine_type: Optional[str] = None,
+        vehicle_type: Optional[str] = None,
+        license_number: Optional[str] = None
     ) -> PendingUser:
         """Create a new pending user."""
         verification_token = PendingUserUtils.generate_verification_token()
@@ -51,6 +55,10 @@ class PendingUserUtils:
             profile_image=profile_image,
             date_of_birth=date_of_birth,
             gender=gender,
+            restaurant_name=restaurant_name,
+            cuisine_type=cuisine_type,
+            vehicle_type=vehicle_type,
+            license_number=license_number,
             verification_token=verification_token,
             expires_at=expires_at,
             is_verified=False
@@ -120,6 +128,87 @@ class PendingUserUtils:
         )
         
         db.add(user)
+        db.flush()  # Flush to get user_id before creating restaurant/delivery partner
+        
+        # If restaurant owner, create restaurant from pending user data
+        if pending_user.role == UserRole.RESTAURANT_OWNER.value and pending_user.restaurant_name:
+            from app.infra.db.postgres.models.restaurant import Restaurant
+            from datetime import time
+            
+            try:
+                restaurant = Restaurant(
+                    owner_id=user.user_id,
+                    name=pending_user.restaurant_name,
+                    description=f"Welcome to {pending_user.restaurant_name}!",
+                    phone=user.phone,
+                    email=user.email,
+                    cuisine_type=pending_user.cuisine_type or 'Multi-Cuisine',
+                    # Set default values for required fields
+                    address_line1="Address not set",
+                    city="City not set",
+                    state="State not set",
+                    postal_code="000000",
+                    latitude=0.0,
+                    longitude=0.0,
+                    avg_delivery_time=30,
+                    min_order_amount=100.0,
+                    delivery_fee=40.0,
+                    rating=0.0,
+                    total_ratings=0,
+                    status='active',
+                    is_open=True,
+                    opening_time=time(9, 0),
+                    closing_time=time(22, 0),
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
+                )
+                
+                db.add(restaurant)
+                logger.info(f"Created restaurant '{restaurant.name}' for user {user.user_id}")
+                
+            except Exception as e:
+                logger.error(f"Error creating restaurant for user {user.user_id}: {str(e)}")
+                # Don't fail user creation if restaurant creation fails
+        
+        # If delivery partner, create delivery partner record
+        elif pending_user.role == UserRole.DELIVERY_PARTNER.value:
+            # Validate required fields
+            if not pending_user.license_number:
+                logger.error(f"Delivery partner signup missing license_number for user {pending_user.email}")
+                raise ValueError("License number is required for delivery partners")
+            
+            from app.infra.db.postgres.models.delivery_partner import DeliveryPartner
+            from app.utils.enums import VehicleType, AvailabilityStatus
+            
+            # Validate and convert vehicle_type
+            vehicle_type_str = (pending_user.vehicle_type or 'motorcycle').lower().strip()
+            
+            # Validate against allowed values
+            valid_vehicle_types = [vt.value for vt in VehicleType]
+            if vehicle_type_str not in valid_vehicle_types:
+                logger.error(f"Invalid vehicle_type '{vehicle_type_str}' for user {pending_user.email}. Valid types: {valid_vehicle_types}")
+                raise ValueError(f"Invalid vehicle type '{vehicle_type_str}'. Must be one of: {', '.join(valid_vehicle_types)}")
+            
+            vehicle_type_enum = VehicleType(vehicle_type_str)
+            
+            logger.info(f"Creating delivery partner for user {pending_user.email}: vehicle_type={vehicle_type_enum.value}, license_number={pending_user.license_number}")
+            
+            delivery_partner = DeliveryPartner(
+                user_id=user.user_id,
+                vehicle_type=vehicle_type_enum,
+                vehicle_number="PENDING",  # Clear placeholder - can be updated later
+                license_number=pending_user.license_number,
+                availability_status=AvailabilityStatus.OFFLINE,
+                rating=0.0,
+                total_ratings=0,
+                total_deliveries=0,
+                is_verified=False,  # Needs document verification
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            
+            db.add(delivery_partner)
+            logger.info(f"Successfully created delivery partner record for user {user.user_id} with vehicle type {vehicle_type_enum.value}")
         
         # Mark pending user as verified
         pending_user.is_verified = True

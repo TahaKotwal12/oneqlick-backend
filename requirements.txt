@@ -3,14 +3,30 @@ psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 sqlalchemy==2.0.38
 uvicorn==0.34.0
+websockets==12.0  # Required for WebSocket support
 redis==5.0.0
 pydantic>=2.0.2,<3.0.0
 pydantic[email]>=2.0.2,<3.0.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 httpx==0.28.1
+requests==2.31.0  # Required for Expo push notifications
 jinja2==3.1.2
 bcrypt==4.3.0
 cryptography==42.0.0
 python-dateutil==2.8.2
-pytz==2023.3 
+pytz==2023.3
+
+# Production dependencies
+gunicorn==21.2.0
+python-multipart==0.0.9
+
+# Rate limiting
+slowapi==0.1.9
+
+# Monitoring - Prometheus
+prometheus-fastapi-instrumentator==6.1.0
+
+# Payment Gateway
+setuptools==69.0.3  # Required for razorpay pkg_resources in Python 3.12
+razorpay==1.4.1

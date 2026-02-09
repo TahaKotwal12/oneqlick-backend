@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, DECIMAL, Integer
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.sql import func
 import uuid
 from ..base import Base
@@ -23,6 +23,7 @@ class FoodItem(Base):
     calories = Column(Integer)
     prep_time = Column(Integer)  # in minutes
     status = Column(String(20), default='available')
+    is_available = Column(Boolean, default=True, nullable=False)  # For inventory management
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
     sort_order = Column(Integer, default=0)
@@ -30,5 +31,6 @@ class FoodItem(Base):
     is_recommended = Column(Boolean, default=False)
     nutrition_info = Column(JSONB)
     preparation_time = Column(String(20))
+    search_vector = Column(TSVECTOR)  # For full-text search
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)

@@ -8,7 +8,7 @@ __pycache__/
 # ----------------------------------------
 # Virtual Environments
 # ----------------------------------------
-env/
+
 venv/
 .venv/
 
@@ -52,10 +52,13 @@ htmlcov/
 # ----------------------------------------
 # Environments / Credentials
 # ----------------------------------------
-.env
-.env.*
+
+.env.local
+.env.*.local
 .venv/
 .envrc
+# Allow .env.example for documentation
+!.env.example
 
 # ----------------------------------------
 # IDE / Editor Settings
@@ -103,3 +106,4 @@ logs/app.log
 *.pid
 *.sock
 *.tmp
+.env

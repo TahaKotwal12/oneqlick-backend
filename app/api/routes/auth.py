@@ -22,6 +22,7 @@ from app.infra.db.postgres.models.pending_user import PendingUser
 from app.infra.db.postgres.models.user_session import UserSession
 from app.utils.enums import UserRole, UserStatus
 from app.config.config import JWT_EXPIRATION_HOURS
+from app.utils.rate_limiter import rate_limit, rate_limit_auth, RATE_LIMIT_CONFIG
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -31,9 +32,10 @@ FORGOT_PASSWORD_SUCCESS_MESSAGE = "If the email exists, an OTP has been sent"
 OTP_VERIFIED_SUCCESS_MESSAGE = "OTP verified successfully"
 
 @router.post("/login", response_model=CommonResponse[LoginResponse])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_login_per_minute"], window=60)
 async def login(
-    request: LoginRequest,
     http_request: Request,
+    request: LoginRequest,
     db: Session = Depends(get_db)
 ):
     """User login with email/phone and password"""
@@ -113,9 +115,10 @@ async def login(
         )
 
 @router.post("/signup", response_model=CommonResponse[SignupResponse], status_code=201)
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_signup_per_minute"], window=60)
 async def signup(
-    request: SignupRequest,
     http_request: Request,
+    request: SignupRequest,
     db: Session = Depends(get_db)
 ):
     """User registration - creates pending user until email verification"""
@@ -193,6 +196,18 @@ async def signup(
         # Hash password
         hashed_password = AuthUtils.hash_password(request.password)
         
+        # Extract partner-specific data from additional_data
+        restaurant_name = None
+        cuisine_type = None
+        vehicle_type = None
+        license_number = None
+        
+        if request.additional_data:
+            restaurant_name = request.additional_data.get('restaurant_name')
+            cuisine_type = request.additional_data.get('cuisine_type')
+            vehicle_type = request.additional_data.get('vehicle_type')
+            license_number = request.additional_data.get('license_number')
+        
         # Create pending user (not in main users table yet) if not already exists
         if not pending_user:
             pending_user = PendingUserUtils.create_pending_user(
@@ -202,7 +217,11 @@ async def signup(
                 email=request.email,
                 phone=request.phone,
                 password_hash=hashed_password,
-                role=UserRole.CUSTOMER.value
+                role=request.role or UserRole.CUSTOMER.value,
+                restaurant_name=restaurant_name,
+                cuisine_type=cuisine_type,
+                vehicle_type=vehicle_type,
+                license_number=license_number
             )
         
         # Ensure pending_user is defined before proceeding
@@ -405,6 +424,86 @@ async def google_signin(
             detail=f"Google signin failed: {str(e)}"
         )
 
+@router.post("/google-token-exchange", response_model=CommonResponse[dict])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_login_per_minute"], window=60)
+async def google_token_exchange(
+    http_request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Exchange Google authorization code for ID token (server-side)
+    This endpoint keeps the client_secret secure on the backend
+    """
+    try:
+        import httpx
+        from app.config.config import GOOGLE_OAUTH_CONFIG
+        
+        # Get request body
+        body = await http_request.json()
+        code = body.get("code")
+        redirect_uri = body.get("redirect_uri")
+        code_verifier = body.get("code_verifier")
+        
+        if not code or not redirect_uri:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required parameters: code and redirect_uri"
+            )
+        
+        # Validate client_secret is configured
+        if not GOOGLE_OAUTH_CONFIG.get("client_secret"):
+            logger.error("GOOGLE_CLIENT_SECRET is not configured")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth is not properly configured"
+            )
+        
+        # Exchange authorization code for tokens with Google
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                GOOGLE_OAUTH_CONFIG["token_uri"],
+                data={
+                    "code": code,
+                    "client_id": GOOGLE_OAUTH_CONFIG["client_id"],
+                    "client_secret": GOOGLE_OAUTH_CONFIG["client_secret"],  # Secure on backend
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                    "code_verifier": code_verifier,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            
+            if token_response.status_code != 200:
+                logger.error(f"Google token exchange failed: {token_response.text}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to exchange authorization code with Google"
+                )
+            
+            token_data = token_response.json()
+            
+            # Return only the ID token to the frontend
+            # Frontend will use this to call /auth/google-signin
+            return CommonResponse(
+                code=200,
+                message="Token exchange successful",
+                message_id="TOKEN_EXCHANGE_SUCCESS",
+                data={
+                    "id_token": token_data.get("id_token"),
+                    "expires_in": token_data.get("expires_in", 3600)
+                }
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token exchange error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token exchange failed: {str(e)}"
+        )
+
+
 @router.post("/refresh", response_model=CommonResponse[RefreshTokenResponse])
 async def refresh_token(
     request: RefreshTokenRequest,
@@ -589,8 +688,10 @@ async def get_user_sessions(
             detail=f"Failed to retrieve sessions: {str(e)}"
         )
 
-@router.post("/forgot-password", response_model=CommonResponse[SendOTPResponse])
+@router.post("/forgot-password", response_model=CommonResponse[dict])
+@rate_limit(limit=RATE_LIMIT_CONFIG["auth_password_reset_per_minute"], window=60)
 async def forgot_password(
+    http_request: Request,
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):

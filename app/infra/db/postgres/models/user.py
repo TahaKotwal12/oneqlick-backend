@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import uuid
 from ..base import Base
 from app.utils.enums import UserRole, UserStatus, Gender

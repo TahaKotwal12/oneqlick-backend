@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timezone
@@ -27,6 +27,7 @@ from app.infra.db.postgres.models.food_item import FoodItem
 from app.infra.db.postgres.models.category import Category
 from app.infra.db.postgres.models.user import User
 from app.config.logger import get_logger
+from app.utils.rate_limiter import rate_limit_public
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 logger = get_logger(__name__)
@@ -79,6 +80,7 @@ def is_restaurant_currently_open(restaurant: Restaurant) -> bool:
 
 
 @router.get("/nearby", response_model=CommonResponse[NearbyRestaurantsResponse])
+@rate_limit_public()  # 100 requests/minute for public endpoints
 async def get_nearby_restaurants(
     latitude: float = Query(..., ge=-90, le=90, description="User's latitude"),
     longitude: float = Query(..., ge=-180, le=180, description="User's longitude"),
@@ -409,7 +411,12 @@ async def get_popular_dishes(
         )
 
 
+
+
+
+
 @router.get("/{restaurant_id}", response_model=CommonResponse[RestaurantDetailResponse])
+@rate_limit_public()  # 100 requests/minute for public endpoints
 async def get_restaurant_by_id(
     restaurant_id: str,
     include_menu: bool = Query(False, description="Include menu items"),
@@ -601,3 +608,83 @@ async def get_restaurant_by_id(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch restaurant details: {str(e)}"
         )
+
+
+def _calculate_restaurant_relevance(restaurant: Restaurant, query: str) -> float:
+    """Calculate relevance score for restaurant search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in restaurant.name.lower():
+        score += 10.0
+        if restaurant.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if restaurant.description and query_lower in restaurant.description.lower():
+        score += 3.0
+    
+    # Cuisine type match
+    if restaurant.cuisine_type and query_lower in restaurant.cuisine_type.lower():
+        score += 2.0
+    
+    # Rating bonus
+    if restaurant.rating:
+        score += float(restaurant.rating) * 0.5
+    
+    # Popularity bonus
+    if restaurant.total_ratings and restaurant.total_ratings > 100:
+        score += 1.0
+    
+    return score
+
+
+def _calculate_dish_relevance(dish: FoodItem, query: str) -> float:
+    """Calculate relevance score for dish search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in dish.name.lower():
+        score += 10.0
+        if dish.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if dish.description and query_lower in dish.description.lower():
+        score += 3.0
+    
+    # Ingredients match
+    if dish.ingredients and query_lower in dish.ingredients.lower():
+        score += 2.0
+    
+    # Rating bonus
+    if dish.rating:
+        score += float(dish.rating) * 0.5
+    
+    # Popularity bonus
+    if dish.is_popular:
+        score += 2.0
+    if dish.is_recommended:
+        score += 1.0
+    
+    return score
+
+
+def _calculate_category_relevance(category: Category, query: str) -> float:
+    """Calculate relevance score for category search results."""
+    query_lower = query.lower()
+    score = 0.0
+    
+    # Name match (highest weight)
+    if query_lower in category.name.lower():
+        score += 10.0
+        if category.name.lower().startswith(query_lower):
+            score += 5.0  # Bonus for prefix match
+    
+    # Description match
+    if category.description and query_lower in category.description.lower():
+        score += 3.0
+    
+    return score

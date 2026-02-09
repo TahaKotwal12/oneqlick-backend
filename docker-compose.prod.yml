@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: oneqlick-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: loki
+      options:
+        loki-url: "https://1453519:${GCLOUD_RW_API_KEY}@logs-prod-028.grafana.net/loki/api/v1/push"
+        loki-external-labels: "job=oneqlick-backend,env=production,container={{.Name}}"
+        loki-retries: "2"
+        loki-batch-size: "400"
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================
+# Redis Configuration
+# ============================================
+# Redis is now using Upstash (external service)
+# This frees up ~100MB RAM on EC2 instance
+# Configure REDIS_HOST, REDIS_PORT, REDIS_PASSWORD in .env
+
