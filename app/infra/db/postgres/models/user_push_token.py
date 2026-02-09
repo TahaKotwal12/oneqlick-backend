@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.models.base import Base
+from ..base import Base
 
 class UserPushToken(Base):
     """Model for storing user push notification tokens"""
