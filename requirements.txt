@@ -28,5 +28,5 @@ slowapi==0.1.9
 prometheus-fastapi-instrumentator==6.1.0
 
 # Payment Gateway
-setuptools>=65.0.0  # Required for razorpay pkg_resources
+setuptools==69.0.3  # Required for razorpay pkg_resources in Python 3.12
 razorpay==1.4.1
