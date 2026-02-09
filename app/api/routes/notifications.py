@@ -470,7 +470,7 @@ async def register_push_token(
     from datetime import datetime
     
     # Validate device type
-    if device_type not in ['ios', 'android']:
+    if request.device_type not in ['ios', 'android']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid device type. Must be 'ios' or 'android'"
