@@ -23,6 +23,7 @@ class FoodItem(Base):
     calories = Column(Integer)
     prep_time = Column(Integer)  # in minutes
     status = Column(String(20), default='available')
+    is_available = Column(Boolean, default=True, nullable=False)  # For inventory management
     rating = Column(DECIMAL(3, 2), default=0)
     total_ratings = Column(Integer, default=0)
     sort_order = Column(Integer, default=0)

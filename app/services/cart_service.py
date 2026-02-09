@@ -322,7 +322,7 @@ class CartService:
                 total_price=cart_item.total_price,
                 special_instructions=cart_item.special_instructions,
                 is_veg=food_item.is_veg if food_item else True,
-                is_available=food_item.is_available if food_item else False
+                is_available=food_item.is_available if food_item else True
             )
             
             item_responses.append(item_response)
