@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import uuid
 from ..base import Base
 from app.utils.enums import UserRole, UserStatus, Gender
@@ -26,3 +27,6 @@ class User(Base):
     loyalty_points = Column(Integer, default=0)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Relationships
+    push_tokens = relationship("UserPushToken", back_populates="user", cascade="all, delete-orphan")
