@@ -18,6 +18,7 @@ from app.api.schemas.notification_schemas import (
     UnreadCountResponse,
     CreateNotificationRequest,
     BroadcastNotificationRequest,
+    RegisterPushTokenRequest,
     BroadcastResponse,
     NotificationStatsResponse
 )
