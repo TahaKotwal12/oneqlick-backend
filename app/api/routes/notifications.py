@@ -504,7 +504,8 @@ async def register_push_token(
         return CommonResponse(
             code=200,
             message="Push token registered successfully",
-            message_id="PUSH_TOKEN_REGISTERED"
+            message_id="PUSH_TOKEN_REGISTERED",
+            data={}
         )
         
     except Exception as e:
@@ -512,7 +513,7 @@ async def register_push_token(
         logger.error(f"Error registering push token: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to register push token: {str(e)}"
+            detail="Failed to register push token"
         )
 
 
@@ -553,7 +554,8 @@ async def unregister_push_token(
         return CommonResponse(
             code=200,
             message="Push token unregistered successfully",
-            message_id="PUSH_TOKEN_UNREGISTERED"
+            message_id="PUSH_TOKEN_UNREGISTERED",
+            data={}
         )
         
     except HTTPException:
