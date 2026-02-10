@@ -15,9 +15,30 @@ class ReviewFormResponse(BaseModel):
     title: str
     description: Optional[str]
     fields: List[ReviewField]
+    created_at: Any
 
     class Config:
         from_attributes = True
+
+class ReviewFormCreate(BaseModel):
+    title: str
+    slug: str
+    fields: List[ReviewField]
+    description: Optional[str] = None
+    status: Optional[str] = "published"
+
+class ReviewFormUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    fields: Optional[List[ReviewField]] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class ReviewFormAdminResponse(ReviewFormResponse):
+    status: str
+    is_active: bool
+    updated_at: Any
 
 class ReviewSubmission(BaseModel):
     slug: str # "profile-rate-app"

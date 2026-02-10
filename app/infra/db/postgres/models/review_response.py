@@ -13,3 +13,4 @@ class ReviewResponse(Base):
     form_id = Column(UUID(as_uuid=True), ForeignKey("core_mstr_one_qlick_review_forms_tbl.id"), nullable=False)
     response_data = Column(JSONB, nullable=False) # Stores user answers
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=text("now()"))

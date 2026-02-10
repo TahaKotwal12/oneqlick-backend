@@ -11,5 +11,7 @@ class ReviewForm(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     fields = Column(JSONB, nullable=False) # Stores the JSON schema
+    status = Column(String, default="published") # draft, published, archived
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"), onupdate=text("now()"))
