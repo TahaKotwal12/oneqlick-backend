@@ -4,7 +4,7 @@ from app.infra.db.postgres.base import Base
 import uuid
 
 class ReviewForm(Base):
-    __tablename__ = "review_forms"
+    __tablename__ = "core_mstr_one_qlick_review_forms_tbl"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String, unique=True, index=True, nullable=False) # e.g., "profile-rate-app"
