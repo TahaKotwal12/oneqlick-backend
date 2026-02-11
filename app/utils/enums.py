@@ -138,3 +138,33 @@ class ReviewType(str, Enum):
     """Review types."""
     RESTAURANT = "restaurant"
     DELIVERY = "delivery"
+
+# Support related enums
+class TicketCategory(str, Enum):
+    """Support ticket categories."""
+    ORDER_ISSUE = "order_issue"
+    PAYMENT = "payment"
+    APP_FEEDBACK = "app_feedback"
+    TECHNICAL_ISSUE = "technical_issue"
+    OTHER = "other"
+
+class TicketStatus(str, Enum):
+    """Support ticket status."""
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+class TicketPriority(str, Enum):
+    """Support ticket priority levels."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+class SupportSenderType(str, Enum):
+    """Types of senders in support chat."""
+    CUSTOMER = "customer"
+    PARTNER = "partner"
+    ADMIN = "admin"
+    SYSTEM = "system"
