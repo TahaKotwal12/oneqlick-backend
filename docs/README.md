@@ -2,7 +2,7 @@
 
 A clean FastAPI-based backend startup project with database connections, exception handling, and common response schemas.
 
-## ✅ **Current Status: Clean Startup Read**
+## ✅ **Current Status: Clean Startup Ready**
 
 ### 🎯 **Core Features**
 
@@ -10,7 +10,7 @@ A clean FastAPI-based backend startup project with database connections, excepti
 - ✅ **Redis Integration**: Caching and session management
 - ✅ **Exception Handling**: Custom exception classes and handlers
 - ✅ **Common Response Schema**: Standardized API response format
-- ✅ **Health Check**: Database  and Redis connection monitoring
+- ✅ **Health Check**: Database and Redis connection monitoring
 - ✅ **Clean Architecture**: Minimal, focused structure
 - ✅ **Complete Database Models**: All tables from SQL script implemented
 
