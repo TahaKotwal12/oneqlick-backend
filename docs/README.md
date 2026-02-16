@@ -2,7 +2,7 @@
 
 A clean FastAPI-based backend startup project with database connections, exception handling, and common response schemas.
 
-## ✅ **Current Status: Clean Startup Ready**
+## ✅ **Current Status: Clean Startup Read**
 
 ### 🎯 **Core Features**
 
