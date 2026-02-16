@@ -7,6 +7,8 @@ import math
 
 from app.infra.db.postgres.postgres_config import get_db
 from app.api.dependencies import get_optional_current_user
+from app.api.dependencies import require_admin
+from sqlalchemy import or_, desc, func
 from app.api.schemas.restaurant_schemas import (
     NearbyRestaurantsResponse,
     RestaurantResponse,
@@ -18,7 +20,9 @@ from app.api.schemas.restaurant_schemas import (
     RestaurantDetailResponse,
     MenuItemResponse,
     MenuCategoryResponse,
-    RestaurantMenuResponse
+    RestaurantMenuResponse,
+    AdminRestaurantListResponse,
+    AdminRestaurantListItem
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.restaurant import Restaurant
@@ -31,6 +35,96 @@ from app.utils.rate_limiter import rate_limit_public
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 logger = get_logger(__name__)
+
+
+@router.get("/admin/list", response_model=CommonResponse[AdminRestaurantListResponse])
+async def get_all_restaurants_admin(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    status: Optional[str] = Query(None, description="Filter by status (active/inactive)"),
+    is_veg: Optional[bool] = Query(None, description="Filter by veg/non-veg"),
+    area: Optional[str] = Query(None, description="Filter by city or area"),
+    sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
+    sort_order: Optional[str] = Query("desc", description="asc/desc"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin endpoint to list all restaurants with filtering and pagination.
+    Includes inactive restaurants and joins owner details.
+    """
+    # 1. Base Query with Join
+    query = db.query(
+        Restaurant,
+        User.first_name,
+        User.last_name
+    ).join(User, Restaurant.owner_id == User.user_id)
+
+    # 2. Apply Filters
+    if status:
+        query = query.filter(Restaurant.status == status)
+    
+    if is_veg is not None:
+        query = query.filter(Restaurant.is_veg == is_veg)
+    
+    if area:
+        # Case-insensitive search in city OR address_line1
+        query = query.filter(
+            or_(
+                Restaurant.city.ilike(f"%{area}%"),
+                Restaurant.address_line1.ilike(f"%{area}%")
+            )
+        )
+
+    # 3. Calculate Total Count (before pagination)
+    total_count = query.count()
+
+    # 4. Apply Sorting
+    if sort_by:
+        # Map sort_by string to actual column to prevent SQL injection
+        sort_column = getattr(Restaurant, sort_by, Restaurant.created_at)
+        if sort_order == "desc":
+            query = query.order_by(desc(sort_column))
+        else:
+            query = query.order_by(sort_column)
+    else:
+        query = query.order_by(desc(Restaurant.created_at))
+
+    # 5. Apply Pagination
+    offset = (page - 1) * page_size
+    results = query.offset(offset).limit(page_size).all()
+    
+    # 6. Map Results to Schema
+    items = []
+    for restaurant, first_name, last_name in results:
+        items.append(AdminRestaurantListItem(
+            restaurant_id=restaurant.restaurant_id,
+            name=restaurant.name,
+            image=restaurant.image,
+            status=restaurant.status,
+            owner_name=f"{first_name} {last_name}",
+            owner_id=restaurant.owner_id,
+            is_veg=restaurant.is_veg,
+            city=restaurant.city,
+            area=restaurant.address_line1,  # Using address_line1 as 'area'
+            created_at=restaurant.created_at
+        ))
+
+    total_pages = math.ceil(total_count / page_size)
+
+    return CommonResponse(
+        code=200,
+        message="Restaurants retrieved successfully",
+        message_id="ADMIN_RESTAURANT_LIST_SUCCESS",
+        data=AdminRestaurantListResponse(
+            items=items,
+            total_count=total_count,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages
+        )
+    )
+
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -409,9 +503,6 @@ async def get_popular_dishes(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch popular dishes: {str(e)}"
         )
-
-
-
 
 
 
