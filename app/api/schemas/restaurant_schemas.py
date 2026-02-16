@@ -297,3 +297,33 @@ class RestaurantDetailResponse(RestaurantResponse):
             Decimal: lambda v: float(v),
             time: lambda v: v.strftime('%H:%M:%S') if v else None
         }
+
+        # [NEW] Admin Response Schemas
+class AdminRestaurantListItem(BaseModel):
+    """Schema for individual restaurant item in admin list"""
+    restaurant_id: UUID
+    name: str
+    image: Optional[str]
+    status: str
+    owner_name: str
+    owner_id: UUID
+    is_veg: bool
+    city: str
+    area: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AdminRestaurantListResponse(BaseModel):
+    """Schema for admin restaurant list response with pagination"""
+    items: List[AdminRestaurantListItem]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+    class Config:
+        from_attributes = True
+
+
