@@ -155,11 +155,12 @@ class CSVMenuService:
     ) -> UUID:
         """
         Get existing category or create new one.
+        Categories are global (shared across all restaurants).
         
         Args:
             db: Database session
             category_name: Name of the category
-            restaurant_id: Restaurant ID
+            restaurant_id: Restaurant ID (not used, categories are global)
             
         Returns:
             UUID: Category ID
@@ -167,9 +168,9 @@ class CSVMenuService:
         from sqlalchemy import func
         
         # Check if category exists (case-insensitive)
+        # Categories are global, so we don't filter by restaurant_id
         category = db.query(Category).filter(
-            func.lower(Category.name) == category_name.lower(),
-            Category.restaurant_id == restaurant_id
+            func.lower(Category.name) == category_name.lower()
         ).first()
         
         if category:
@@ -177,15 +178,16 @@ class CSVMenuService:
         
         # Create new category
         new_category = Category(
-            restaurant_id=restaurant_id,
             name=category_name.strip(),
             description=f"Category for {category_name}",
-            is_active=True
+            is_active=True,
+            show_on_home=False,
+            sort_order=0
         )
         db.add(new_category)
         db.flush()  # Get the ID without committing
         
-        logger.info(f"Created new category: {category_name} for restaurant {restaurant_id}")
+        logger.info(f"Created new global category: {category_name}")
         return new_category.category_id
     
     @staticmethod
