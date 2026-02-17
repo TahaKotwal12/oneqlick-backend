@@ -23,7 +23,7 @@ class CSVMenuService:
     # CSV template headers
     CSV_HEADERS = [
         'name',
-        'category_id',
+        'category_name',
         'price',
         'description',
         'is_veg',
@@ -48,7 +48,7 @@ class CSVMenuService:
         # Write sample rows
         writer.writerow([
             'Paneer Butter Masala',
-            '<category-uuid>',
+            'Main Course',
             '250.00',
             'Creamy tomato curry with cottage cheese',
             'true',
@@ -57,7 +57,7 @@ class CSVMenuService:
         ])
         writer.writerow([
             'Chicken Biryani',
-            '<category-uuid>',
+            'Main Course',
             '300.00',
             'Aromatic rice with tender chicken',
             'false',
@@ -120,7 +120,7 @@ class CSVMenuService:
                     # Create MenuItemImportRow
                     menu_item = MenuItemImportRow(
                         name=row['name'].strip(),
-                        category_id=row['category_id'].strip(),
+                        category_name=row['category_name'].strip(),
                         price=Decimal(row['price'].strip()),
                         description=row.get('description', '').strip() or None,
                         is_veg=is_veg,
@@ -146,68 +146,126 @@ class CSVMenuService:
         
         return valid_rows, errors
     
+    
     @staticmethod
-    def validate_menu_items(
+    def get_or_create_category(
+        db: Session,
+        category_name: str,
+        restaurant_id: UUID
+    ) -> UUID:
+        """
+        Get existing category or create new one.
+        
+        Args:
+            db: Database session
+            category_name: Name of the category
+            restaurant_id: Restaurant ID
+            
+        Returns:
+            UUID: Category ID
+        """
+        from sqlalchemy import func
+        
+        # Check if category exists (case-insensitive)
+        category = db.query(Category).filter(
+            func.lower(Category.name) == category_name.lower(),
+            Category.restaurant_id == restaurant_id
+        ).first()
+        
+        if category:
+            return category.category_id
+        
+        # Create new category
+        new_category = Category(
+            restaurant_id=restaurant_id,
+            name=category_name.strip(),
+            description=f"Category for {category_name}",
+            is_active=True
+        )
+        db.add(new_category)
+        db.flush()  # Get the ID without committing
+        
+        logger.info(f"Created new category: {category_name} for restaurant {restaurant_id}")
+        return new_category.category_id
+    
+    @staticmethod
+    def validate_and_prepare_items(
         db: Session,
         items: List[MenuItemImportRow],
         restaurant_id: UUID
-    ) -> List[MenuItemError]:
+    ) -> Tuple[List[Dict], List[MenuItemError]]:
         """
-        Validate menu items before import.
+        Validate menu items and prepare with category IDs.
+        Creates categories automatically if they don't exist.
         
         Args:
             db: Database session
             items: List of menu items to validate
-            restaurant_id: Restaurant ID for validation
+            restaurant_id: Restaurant ID
             
         Returns:
-            List[MenuItemError]: Validation errors
+            Tuple[List[Dict], List[MenuItemError]]: Prepared items and errors
         """
         errors = []
-        
-        # Get all valid category IDs for this restaurant
-        valid_categories = db.query(Category.category_id).all()
-        valid_category_ids = {str(cat.category_id) for cat in valid_categories}
+        prepared_items = []
+        category_cache = {}  # Cache to avoid duplicate queries
         
         for idx, item in enumerate(items, start=2):
-            # Validate category exists
-            if item.category_id not in valid_category_ids:
+            try:
+                # Get or create category
+                if item.category_name not in category_cache:
+                    category_id = CSVMenuService.get_or_create_category(
+                        db, item.category_name, restaurant_id
+                    )
+                    category_cache[item.category_name] = category_id
+                else:
+                    category_id = category_cache[item.category_name]
+                
+                # Validate price
+                if item.price <= 0:
+                    errors.append(MenuItemError(
+                        row_number=idx,
+                        item_name=item.name,
+                        error="Price must be greater than 0"
+                    ))
+                    continue
+                
+                # Validate name length
+                if len(item.name) > 255:
+                    errors.append(MenuItemError(
+                        row_number=idx,
+                        item_name=item.name,
+                        error="Name exceeds 255 characters"
+                    ))
+                    continue
+                
+                # Add to prepared items
+                prepared_items.append({
+                    'item': item,
+                    'category_id': category_id
+                })
+                
+            except Exception as e:
                 errors.append(MenuItemError(
                     row_number=idx,
                     item_name=item.name,
-                    error=f"Invalid category_id: {item.category_id}"
-                ))
-            
-            # Validate price
-            if item.price <= 0:
-                errors.append(MenuItemError(
-                    row_number=idx,
-                    item_name=item.name,
-                    error="Price must be greater than 0"
-                ))
-            
-            # Validate name length
-            if len(item.name) > 255:
-                errors.append(MenuItemError(
-                    row_number=idx,
-                    item_name=item.name,
-                    error="Name exceeds 255 characters"
+                    error=f"Failed to process: {str(e)}"
                 ))
         
-        return errors
+        return prepared_items, errors
     
     @staticmethod
     def bulk_create_menu_items(
         db: Session,
-        items: List[MenuItemImportRow],
+        prepared_items: List[Dict],
         restaurant_id: UUID
     ) -> Tuple[int, List[MenuItemError]]:
         """
-        Bulk create menu items from validated rows.
+        Bulk create menu items from prepared items with category IDs.
         
         Args:
             db: Database session
-            items: List of validated menu items
+            prepared_items: List of prepared items with category IDs
             restaurant_id: Restaurant ID
             
         Returns:
@@ -218,11 +276,14 @@ class CSVMenuService:
         errors = []
         
         try:
-            for idx, item in enumerate(items, start=2):
+            for idx, prepared in enumerate(prepared_items, start=2):
                 try:
+                    item = prepared['item']
+                    category_id = prepared['category_id']
+                    
                     food_item = FoodItem(
                         restaurant_id=restaurant_id,
-                        category_id=UUID(item.category_id),
+                        category_id=category_id,
                         name=item.name,
                         description=item.description,
                         price=item.price,
@@ -282,18 +343,22 @@ class CSVMenuService:
         if parse_errors and not valid_rows:
             return {
                 'success': False,
+                'message': 'CSV parsing failed',
                 'total_rows': 0,
                 'success_count': 0,
                 'error_count': len(parse_errors),
                 'errors': parse_errors
             }
         
-        # Step 2: Validate items
-        validation_errors = CSVMenuService.validate_menu_items(db, valid_rows, restaurant_id)
+        # Step 2: Validate and prepare items (creates categories automatically)
+        prepared_items, validation_errors = CSVMenuService.validate_and_prepare_items(
+            db, valid_rows, restaurant_id
+        )
         
-        if validation_errors:
+        if validation_errors and not prepared_items:
             return {
                 'success': False,
+                'message': 'Validation failed',
                 'total_rows': len(valid_rows),
                 'success_count': 0,
                 'error_count': len(validation_errors),
@@ -302,13 +367,14 @@ class CSVMenuService:
         
         # Step 3: Bulk create items
         created_count, create_errors = CSVMenuService.bulk_create_menu_items(
-            db, valid_rows, restaurant_id
+            db, prepared_items, restaurant_id
         )
         
         total_errors = parse_errors + validation_errors + create_errors
         
         return {
             'success': created_count > 0,
+            'message': f'Successfully uploaded {created_count} items',
             'total_rows': len(valid_rows),
             'success_count': created_count,
             'error_count': len(total_errors),

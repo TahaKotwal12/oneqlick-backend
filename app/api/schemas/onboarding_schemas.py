@@ -166,20 +166,13 @@ class BankDetailsResponse(BaseModel):
 class MenuItemImportRow(BaseModel):
     """Schema for a single menu item row from CSV."""
     name: str = Field(..., min_length=1, max_length=255)
-    category_id: str  # Will be validated as UUID
+    category_name: str = Field(..., min_length=1, max_length=100)  # Changed from category_id
     price: Decimal = Field(..., gt=0)
     description: Optional[str] = Field(None, max_length=1000)
     is_veg: bool = True
     image_url: Optional[str] = Field(None, max_length=500)
     prep_time: Optional[int] = Field(None, ge=0)
-    
-    @validator('category_id')
-    def validate_category_id(cls, v):
-        try:
-            UUID(v)
-            return v
-        except ValueError:
-            raise ValueError('category_id must be a valid UUID')
+
 
 
 class BulkMenuUploadRequest(BaseModel):
