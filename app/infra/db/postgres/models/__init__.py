@@ -16,6 +16,7 @@ from .review import Review
 from .notification import Notification
 from .payment import Payment
 from .support import SupportTicket, SupportMessage
+from .restaurant_onboarding import RestaurantOnboarding
 
 # Authentication models
 from .refresh_token import RefreshToken
@@ -53,6 +54,7 @@ __all__ = [
     'Payment',
     'SupportTicket',
     'SupportMessage',
+    'RestaurantOnboarding',
     
     # Authentication models
     'RefreshToken',

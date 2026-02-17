@@ -39,5 +39,24 @@ class Restaurant(Base):
     cost_for_two = Column(DECIMAL(10, 2))
     platform_fee = Column(DECIMAL(10, 2), default=5)
     search_vector = Column(TSVECTOR)  # For full-text search
+    
+    # Onboarding and approval
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    approval_status = Column(String(20), default='pending')  # pending, approved, rejected
+    approved_by = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_users_tbl.user_id'))
+    approved_at = Column(TIMESTAMP)
+    rejection_reason = Column(String(500))
+    
+    # Bank details for settlements
+    bank_account_number = Column(String(50))
+    bank_ifsc_code = Column(String(20))
+    bank_account_holder_name = Column(String(255))
+    bank_name = Column(String(255))
+    
+    # Business registration
+    fssai_license_number = Column(String(50))
+    gst_number = Column(String(50))
+    pan_number = Column(String(50))
+    
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)

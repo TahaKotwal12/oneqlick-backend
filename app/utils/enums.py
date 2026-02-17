@@ -168,3 +168,28 @@ class SupportSenderType(str, Enum):
     PARTNER = "partner"
     ADMIN = "admin"
     SYSTEM = "system"
+
+# Onboarding related enums
+class OnboardingStep(str, Enum):
+    """Restaurant onboarding steps."""
+    REGISTRATION = "registration"
+    VERIFICATION = "verification"
+    PROFILE = "profile"
+    MENU = "menu"
+    BANK_DETAILS = "bank_details"
+    REVIEW = "review"
+    COMPLETED = "completed"
+
+class OnboardingStatus(str, Enum):
+    """Restaurant onboarding verification status."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class BusinessType(str, Enum):
+    """Restaurant business types."""
+    CLOUD_KITCHEN = "cloud_kitchen"
+    DINE_IN = "dine_in"
+    BOTH = "both"
