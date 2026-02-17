@@ -10,8 +10,8 @@ class FoodItem(Base):
     __tablename__ = 'core_mstr_one_qlick_food_items_tbl'
 
     food_item_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    restaurant_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_restaurants_tbl(restaurant_id)', ondelete='CASCADE'))
-    category_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_categories_tbl(category_id)'))
+    restaurant_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_restaurants_tbl.restaurant_id', ondelete='CASCADE'))
+    category_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_categories_tbl.category_id'))
     name = Column(String(255), nullable=False)
     description = Column(String)
     price = Column(DECIMAL(10, 2), nullable=False)
