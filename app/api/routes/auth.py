@@ -234,69 +234,72 @@ async def signup(
         
         logger.info(f"Pending user determined: {pending_user.pending_user_id} for email: {request.email}")
         
-        # Send OTP for email verification
-        from app.utils.otp_utils import OTPUtils
-        from app.services.email_service import email_service
+        # Determine verification type (default to phone if available)
+        verification_type = "phone_verification" if request.phone else "email_verification"
         
-        logger.info(f"Creating OTP for pending user {pending_user.pending_user_id}, email: {request.email}")
+        # Send OTP
+        from app.utils.otp_utils import OTPUtils
+        
+        logger.info(f"Creating OTP for pending user {pending_user.pending_user_id}, type: {verification_type}")
         
         otp_record = OTPUtils.create_otp_record(
             db=db,
-            user_id=str(pending_user.pending_user_id),  # Use pending user ID
+            user_id=str(pending_user.pending_user_id),
             email=request.email,
-            otp_type="email_verification",
-            is_pending_user=True  # Mark as pending user
+            phone=request.phone,
+            otp_type=verification_type,
+            is_pending_user=True
         )
         
         if not otp_record:
             logger.error(f"Failed to create OTP record for pending user {pending_user.pending_user_id}")
-            # Clean up pending user if OTP creation fails
             PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to generate verification code. Please try again."
             )
         
-        logger.info(f"OTP record created successfully: {otp_record.otp_code}")
-        
-        # Send OTP email
+        # Send OTP via SMS or Email
         try:
-            logger.info(f"Attempting to send OTP email to {request.email}")
-            email_sent = await email_service.send_otp_email(
-                to_email=request.email,
-                otp_code=otp_record.otp_code,
-                user_name=f"{pending_user.first_name} {pending_user.last_name}".strip(),
-                otp_type="email_verification"
-            )
+            if verification_type == "phone_verification":
+                from app.services.sms_service import sms_service
+                logger.info(f"Attempting to send OTP SMS to {request.phone}")
+                sent = await sms_service.send_otp_sms(
+                    to_phone=request.phone,
+                    otp_code=otp_record.otp_code,
+                    user_name=f"{pending_user.first_name} {pending_user.last_name}".strip()
+                )
+            else:
+                from app.services.email_service import email_service
+                logger.info(f"Attempting to send OTP email to {request.email}")
+                sent = await email_service.send_otp_email(
+                    to_email=request.email,
+                    otp_code=otp_record.otp_code,
+                    user_name=f"{pending_user.first_name} {pending_user.last_name}".strip(),
+                    otp_type="email_verification"
+                )
             
-            if email_sent:
-                logger.info(f"OTP sent successfully to {request.email} for email verification")
+            if sent:
+                logger.info(f"OTP sent successfully via {verification_type}")
                 # Count the signup OTP as the first attempt for lockout logic
                 try:
                     from app.utils.pending_user_utils import PendingUserUtils as _PU
                     _PU.update_pending_user_otp_status(db, pending_user, increment_attempts=True)
-                    logger.info(
-                        f"Initialized OTP attempts for pending user {pending_user.pending_user_id}"
-                    )
                 except Exception as incr_err:
-                    logger.warning(
-                        f"Failed to initialize OTP attempts for pending user {pending_user.pending_user_id}: {incr_err}"
-                    )
+                    logger.warning(f"Failed to initialize OTP attempts: {incr_err}")
             else:
-                logger.error(f"Email service returned False for {request.email}")
-                # Clean up pending user if email sending fails
+                logger.error(f"Sending service returned False for {verification_type}")
                 PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to send verification email. Please try again."
+                    detail=f"Failed to send verification {verification_type.split('_')[0]}. Please try again."
                 )
         except Exception as e:
-            logger.error(f"Failed to send OTP email to {request.email}: {e}")
-            # Clean up pending user if email sending fails
+            logger.error(f"Failed to send OTP via {verification_type}: {e}")
             PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send verification email. Please try again."
+                detail=f"Failed to send verification {verification_type.split('_')[0]}. Please try again."
             )
         
         return CommonResponse(
