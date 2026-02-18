@@ -65,8 +65,6 @@ NOTIFICATION_CONFIG = {
     "sms_provider": os.getenv("SMS_PROVIDER", "twilio"),  # or "msg91"
     "twilio_account_sid": os.getenv("TWILIO_ACCOUNT_SID", ""),
     "twilio_auth_token": os.getenv("TWILIO_AUTH_TOKEN", ""),
-    "twilio_api_key_sid": os.getenv("TWILIO_API_KEY_SID", ""),
-    "twilio_api_key_secret": os.getenv("TWILIO_API_KEY_SECRET", ""),
     "twilio_phone_number": os.getenv("TWILIO_PHONE_NUMBER", ""),
     "msg91_auth_key": os.getenv("MSG91_AUTH_KEY", ""),
     "msg91_template_id": os.getenv("MSG91_TEMPLATE_ID", "")
