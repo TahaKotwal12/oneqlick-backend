@@ -100,7 +100,7 @@ class PendingUserUtils:
         return now > expires_at
     
     @staticmethod
-    def verify_pending_user(db: Session, verification_token: str) -> Optional[User]:
+    def verify_pending_user(db: Session, verification_token: str, verification_type: str = "email") -> Optional[User]:
         """Verify pending user and move to main users table."""
         pending_user = PendingUserUtils.get_pending_user_by_token(db, verification_token)
         
@@ -109,6 +109,10 @@ class PendingUserUtils:
         
         if PendingUserUtils.is_token_expired(pending_user):
             return None
+        
+        # Determine verification status
+        email_verified = verification_type == "email"
+        phone_verified = verification_type == "phone"
         
         # Create user in main table
         user = User(
@@ -120,8 +124,8 @@ class PendingUserUtils:
             role=pending_user.role,
             status=UserStatus.ACTIVE.value,
             profile_image=pending_user.profile_image,
-            email_verified=True,  # Set as verified since they completed verification
-            phone_verified=False,  # Phone verification is separate
+            email_verified=email_verified,
+            phone_verified=phone_verified,
             date_of_birth=pending_user.date_of_birth,
             gender=pending_user.gender,
             loyalty_points=0

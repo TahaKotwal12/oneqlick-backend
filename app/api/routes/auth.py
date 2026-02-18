@@ -67,11 +67,11 @@ async def login(
                 detail="Account is not active"
             )
         
-        # Check if email is verified (required for login)
-        if not user.email_verified:
+        # Check if email or phone is verified (required for login)
+        if not user.email_verified and not user.phone_verified:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please verify your email address before logging in. Check your email for verification instructions."
+                detail="Please verify your email address or phone number before logging in. Check your email or SMS for verification instructions."
             )
         
         # Generate tokens
@@ -1196,12 +1196,33 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
                     except Exception as e:
                         logger.warning(f"Failed to send welcome email to {user.email}: {e}")
         elif request.otp_type == "phone_verification":
-            # Regular user phone verification
-            user = AuthUtils.get_user_by_id(db, user_id)
-            if user:
-                user.phone_verified = True
-                user.updated_at = datetime.now(timezone.utc)
-                db.commit()
+            from app.utils.pending_user_utils import PendingUserUtils
+            
+            # Check if this is a pending user (signup verification)
+            if is_pending_user:
+                pending_user = db.query(PendingUser).filter(PendingUser.pending_user_id == user_id).first()
+                if pending_user:
+                    # Reset OTP attempts on successful verification
+                    PendingUserUtils.reset_otp_attempts(db, pending_user)
+                    
+                    # Move pending user to main users table using verification token
+                    # For phone verification, we pass the "phone" type to update the record correctly
+                    user = PendingUserUtils.verify_pending_user(db, pending_user.verification_token, verification_type="phone")
+                    if not user:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Verification failed during account activation"
+                        )
+                
+                # Send welcome notification (optional, skipping email since phone was verified)
+                logger.info(f"User {user.phone} activated via phone verification")
+            else:
+                # Regular user phone verification
+                user = AuthUtils.get_user_by_id(db, user_id)
+                if user:
+                    user.phone_verified = True
+                    user.updated_at = datetime.now(timezone.utc)
+                    db.commit()
         
         return CommonResponse(
             code=200,
