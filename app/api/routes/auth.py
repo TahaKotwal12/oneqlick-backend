@@ -1042,10 +1042,21 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
                 )
         
         elif request.phone and request.otp_type == "phone_verification":
-            # Log OTP for development/testing purposes
-            # In production, integrate with SMS service like Twilio or MSG91
-            logger.info(f"Phone OTP: {otp_record.otp_code} for {request.phone}")
-            # TODO: Implement actual SMS sending service integration
+            # Send OTP via Twilio SMS
+            from app.services.sms_service import sms_service
+            logger.info(f"Sending phone OTP via Twilio SMS to {request.phone}")
+            sms_sent = await sms_service.send_otp_sms(
+                to_phone=request.phone,
+                otp_code=otp_record.otp_code,
+                user_name=user_name,
+                expires_minutes=10
+            )
+            if not sms_sent:
+                logger.error(f"Failed to send SMS OTP to {request.phone}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send OTP SMS. Please check your phone number and try again."
+                )
         
         # Update OTP attempts and get lockout info
         if is_pending_user and pending_user:
