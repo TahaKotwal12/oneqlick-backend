@@ -327,3 +327,24 @@ class AdminRestaurantListResponse(BaseModel):
         from_attributes = True
 
 
+
+class RestaurantUpdateSchema(BaseModel):
+    """Schema for updating restaurant details by admin"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cuisine_type: Optional[str] = None
+    image: Optional[str] = None
+    cover_image: Optional[str] = None
+    status: Optional[str] = None
+    is_veg: Optional[bool] = None
+    is_pure_veg: Optional[bool] = None
+    opening_time: Optional[time] = None
+    closing_time: Optional[time] = None
+    min_order_amount: Optional[Decimal] = None
+    cost_for_two: Optional[Decimal] = None
+    
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v),
+            time: lambda v: v.strftime('%H:%M:%S') if v else None
+        }
