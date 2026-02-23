@@ -162,27 +162,38 @@ def update_delivery_partner(
 
     partner, user, address = result
 
-    # Update User fields if provided
-    if update_data.first_name is not None:
+    is_modified = False
+
+    # Update User fields if provided and changed
+    if update_data.first_name is not None and user.first_name != update_data.first_name:
         user.first_name = update_data.first_name
-    if update_data.last_name is not None:
+        is_modified = True
+    if update_data.last_name is not None and user.last_name != update_data.last_name:
         user.last_name = update_data.last_name
-    if update_data.phone is not None:
+        is_modified = True
+    if update_data.phone is not None and user.phone != update_data.phone:
         user.phone = update_data.phone
+        is_modified = True
 
-    # Update Delivery Partner fields if provided
-    if update_data.vehicle_type is not None:
+    # Update Delivery Partner fields if provided and changed
+    if update_data.vehicle_type is not None and partner.vehicle_type != update_data.vehicle_type:
         partner.vehicle_type = update_data.vehicle_type
-    if update_data.vehicle_number is not None:
+        is_modified = True
+    if update_data.vehicle_number is not None and partner.vehicle_number != update_data.vehicle_number:
         partner.vehicle_number = update_data.vehicle_number
-    if update_data.license_number is not None:
+        is_modified = True
+    if update_data.license_number is not None and partner.license_number != update_data.license_number:
         partner.license_number = update_data.license_number
-    if update_data.availability_status is not None:
+        is_modified = True
+    if update_data.availability_status is not None and partner.availability_status != update_data.availability_status:
         partner.availability_status = update_data.availability_status
+        is_modified = True
 
-    db.commit()
-    db.refresh(partner)
-    db.refresh(user)
+    # Only commit to database if something actually changed
+    if is_modified:
+        db.commit()
+        db.refresh(partner)
+        db.refresh(user)
 
     return CommonResponse(
         code=status.HTTP_200_OK,
