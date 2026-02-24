@@ -22,7 +22,8 @@ from app.api.schemas.restaurant_schemas import (
     MenuCategoryResponse,
     RestaurantMenuResponse,
     AdminRestaurantListResponse,
-    AdminRestaurantListItem
+    AdminRestaurantListItem,
+    RestaurantUpdateSchema
 )
 from app.api.schemas.common_schemas import CommonResponse
 from app.infra.db.postgres.models.restaurant import Restaurant
@@ -150,6 +151,105 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     
     distance = R * c
     return round(distance, 2)
+
+
+@router.put("/admin/{restaurant_id}", response_model=CommonResponse[RestaurantResponse])
+async def update_restaurant_admin(
+    restaurant_id: str,
+    restaurant_update: RestaurantUpdateSchema,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """
+    Update a restaurant's details (Admin only).
+    Used for approving restaurants, changing status, or fixing details.
+    """
+    try:
+        # 1. Find the restaurant
+        restaurant = db.query(Restaurant).filter(Restaurant.restaurant_id == restaurant_id).first()
+        if not restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurant not found"
+            )
+
+        # 2. Update fields if provided
+        update_data = restaurant_update.dict(exclude_unset=True)
+        
+        for field, value in update_data.items():
+            if hasattr(restaurant, field):
+                setattr(restaurant, field, value)
+        
+        # 3. Save changes
+        restaurant.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(restaurant)
+        
+        # 4. Construct response
+        # Build location response
+        location = RestaurantLocationResponse(
+            address_line1=restaurant.address_line1,
+            address_line2=restaurant.address_line2,
+            city=restaurant.city,
+            state=restaurant.state,
+            postal_code=restaurant.postal_code,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude
+        )
+        
+        # Fetch active offers
+        offers = db.query(RestaurantOffer).filter(
+            RestaurantOffer.restaurant_id == restaurant.restaurant_id,
+            RestaurantOffer.is_active == True,
+            RestaurantOffer.valid_from <= datetime.now(timezone.utc),
+            RestaurantOffer.valid_until >= datetime.now(timezone.utc)
+        ).all()
+        
+        offer_responses = [
+            RestaurantOfferResponse.from_orm(offer) for offer in offers
+        ]
+        
+        restaurant_dict = {
+            'restaurant_id': restaurant.restaurant_id,
+            'name': restaurant.name,
+            'description': restaurant.description,
+            'cuisine_type': restaurant.cuisine_type,
+            'image': restaurant.image,
+            'cover_image': restaurant.cover_image,
+            'rating': restaurant.rating,
+            'total_ratings': restaurant.total_ratings,
+            'avg_delivery_time': restaurant.avg_delivery_time,
+            'delivery_fee': restaurant.delivery_fee,
+            'min_order_amount': restaurant.min_order_amount,
+            'cost_for_two': restaurant.cost_for_two,
+            'platform_fee': restaurant.platform_fee,
+            'status': restaurant.status,
+            'is_open': is_restaurant_currently_open(restaurant),
+            'is_veg': restaurant.is_veg,
+            'is_pure_veg': restaurant.is_pure_veg,
+            'opening_time': restaurant.opening_time,
+            'closing_time': restaurant.closing_time,
+            'distance': None, 
+            'location': location,
+            'offers': offer_responses
+        }
+        
+        return CommonResponse(
+            code=200,
+            message="Restaurant updated successfully",
+            message_id="ADMIN_RESTAURANT_UPDATE_SUCCESS",
+            data=RestaurantResponse(**restaurant_dict)
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating restaurant: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update restaurant: {str(e)}"
+        )
 
 
 def is_restaurant_currently_open(restaurant: Restaurant) -> bool:

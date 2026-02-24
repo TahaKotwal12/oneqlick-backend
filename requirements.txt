@@ -30,3 +30,6 @@ prometheus-fastapi-instrumentator==6.1.0
 # Payment Gateway
 setuptools==69.0.3  # Required for razorpay pkg_resources in Python 3.12
 razorpay==1.4.1
+
+# SMS
+twilio==9.3.7
