@@ -199,49 +199,82 @@ class EmailService:
         if otp_match:
             logger.info(f"🔐 OTP CODE: {otp_match.group(1)}")
             logger.info("-" * 80)
+        # logger.info("=" * 80)
+        # logger.info("📧 EMAIL NOTIFICATION (NOT SENT - LOGGED ONLY)")
+        # logger.info("=" * 80)
+        # logger.info(f"To: {to_email}")
+        # logger.info(f"Subject: {subject}")
+        # logger.info("-" * 80)
         
-        logger.info("✅ Email logged successfully (SMTP disabled)")
-        logger.info("=" * 80)
+        # # Extract OTP from HTML if present
+        # import re
+        # otp_match = re.search(r'<div class="otp-number">(\d{6})</div>', html_content)
+        # if otp_match:
+        #     logger.info(f"🔐 OTP CODE: {otp_match.group(1)}")
+        #     logger.info("-" * 80)
         
-        # Always return True so signup/login continues
-        return True
+        # logger.info("✅ Email logged successfully (SMTP disabled)")
+        # logger.info("=" * 80)
         
-        # ============================================================
+        # # Always return True so signup/login continues
+        # return True
+        
+        # ===========================================================
         # SMTP CODE COMMENTED OUT - NOT WORKING ON RAILWAY
-        # ============================================================
-        # try:
-        #     # Check if SMTP is configured
-        #     if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
-        #         logger.warning("⚠️  SMTP not configured")
-        #         return True
-        #     
-        #     # Create message
-        #     msg = MIMEMultipart('alternative')
-        #     msg['Subject'] = subject
-        #     msg['From'] = self.config["smtp_username"]
-        #     msg['To'] = to_email
-        #     
-        #     # Add HTML content
-        #     html_part = MIMEText(html_content, 'html', 'utf-8')
-        #     msg.attach(html_part)
-        #     
-        #     # Connect to SMTP server and send
-        #     if self.config["smtp_use_tls"]:
-        #         server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
-        #         server.starttls()
-        #     else:
-        #         server = smtplib.SMTP_SSL(self.config["smtp_host"], self.config["smtp_port"])
-        #     
-        #     server.login(self.config["smtp_username"], self.config["smtp_password"])
-        #     server.send_message(msg)
-        #     server.quit()
-        #     
-        #     logger.info(f"✅ Email sent successfully via SMTP to {to_email}")
-        #     return True
-        #     
-        # except Exception as e:
-        #     logger.error(f"❌ SMTP send failed: {e}")
-        #     return True
+        # ===========================================================
+        try:
+            # Check if SMTP is configured
+            if not self.config.get("smtp_host") or not self.config.get("smtp_username"):
+                logger.warning("⚠️  SMTP not configured ")
+                return True
+            
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.config["smtp_username"]
+            msg['To'] = to_email
+            
+            # Add HTML content
+            html_part = MIMEText(html_content, 'html', 'utf-8')
+            msg.attach(html_part)
+            
+            # Connect to SMTP server and send
+            if self.config["smtp_use_tls"]:
+                server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+                server.starttls()
+            else:
+                server = smtplib.SMTP_SSL(self.config["smtp_host"], self.config["smtp_port"])
+        
+            server.login(self.config["smtp_username"], self.config["smtp_password"])
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"✅ Email sent successfully via SMTP to {to_email}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ SMTP send failed: {e}")
+            return True
+    
+    async def send_welcome_email(
+        self, 
+        to_email: str, 
+        user_name: str,
+        first_name: str = "User"
+    ) -> bool:
+        """Send welcome email to new users"""
+        try:
+            # Generate email content
+            subject, html_content, text_content = self._generate_welcome_email_content(
+                user_name, first_name
+            )
+            
+            # Use SMTP directly
+            return self._send_welcome_with_smtp(to_email, subject, html_content)
+                
+        except Exception as e:
+            logger.error(f"Failed to send welcome email: {e}")
+            return False
     
     async def send_welcome_email(
         self, 
