@@ -78,6 +78,7 @@ def get_all_delivery_partners(
         search_term = f"%{search.lower()}%"
         query = query.filter(
             or_(
+                func.lower(func.concat(User.first_name, ' ', User.last_name)).ilike(search_term),
                 func.lower(User.first_name).ilike(search_term),
                 func.lower(User.last_name).ilike(search_term),
                 func.lower(DeliveryPartner.vehicle_number).ilike(search_term),
