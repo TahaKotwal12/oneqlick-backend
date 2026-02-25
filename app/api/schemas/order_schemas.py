@@ -392,6 +392,10 @@ class AdminOrdersResponse(BaseModel):
     """Response schema for admin orders list"""
     orders: List[AdminOrderResponse]
     total_count: int
+    total_orders_completed: int  # Add this
+    page: int                   # Add this
+    page_size: int              # Add this
+    total_pages: int            # Add this
     has_more: bool
 
 
