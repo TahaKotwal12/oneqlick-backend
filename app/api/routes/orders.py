@@ -6,10 +6,11 @@ Handles all order-related operations for customers, restaurants, delivery partne
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from uuid import UUID
+import math
 
 from app.infra.db.postgres.postgres_config import get_db
 from app.api.dependencies import get_current_user, get_optional_current_user
@@ -1652,10 +1653,18 @@ async def get_delivery_earnings(
 
 @router.get("/admin/orders", response_model=CommonResponse[AdminOrdersResponse])
 async def get_all_orders_admin(
-    status_filter: Optional[OrderStatus] = Query(None), restaurant_id: Optional[UUID] = Query(None),
-    customer_id: Optional[UUID] = Query(None), from_date: Optional[datetime] = Query(None),
-    to_date: Optional[datetime] = Query(None), page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100),
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    status_filter: Optional[Literal[OrderStatus.PENDING, OrderStatus.CONFIRMED]] = Query(None),
+    restaurant_id: Optional[UUID] = Query(None),
+    customer_id: Optional[UUID] = Query(None),
+    from_date: Optional[datetime] = Query(None),
+    to_date: Optional[datetime] = Query(None),
+    min_price: Optional[Decimal] = Query(None),
+    max_price: Optional[Decimal] = Query(None),
+    location: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get all orders with filters (admin only)."""
     try:
@@ -1663,6 +1672,20 @@ async def get_all_orders_admin(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can access all orders")
         
         query = db.query(Order)
+        
+        # Location Filter (matching City or State)
+        if location:
+            query = query.join(Address, Order.delivery_address_id == Address.address_id)
+            query = query.filter(or_(
+                Address.city.ilike(f"%{location}%"),
+                Address.state.ilike(f"%{location}%")
+            ))
+
+        # Price Filters
+        if min_price:
+            query = query.filter(Order.total_amount >= min_price)
+        if max_price:
+            query = query.filter(Order.total_amount <= max_price)
         if status_filter:
             query = query.filter(Order.order_status == status_filter)
         if restaurant_id:
@@ -1674,11 +1697,18 @@ async def get_all_orders_admin(
         if to_date:
             query = query.filter(Order.created_at <= to_date)
         
+                # Total items for current query
         total_count = query.count()
+        
+        # Calculate Total Pages
+        total_pages = math.ceil(total_count / limit) if limit > 0 else 0
+        
+        # Calculate Overall Completed Orders (all delivered orders)
+        total_orders_completed = db.query(Order).filter(Order.order_status == OrderStatus.DELIVERED).count()
+
         offset = (page - 1) * limit
         orders = query.order_by(desc(Order.created_at)).offset(offset).limit(limit).all()
         
-        # Build admin order responses (simplified for now)
         order_responses = []
         for order in orders:
             customer = db.query(User).filter(User.user_id == order.customer_id).first()
@@ -1707,7 +1737,16 @@ async def get_all_orders_admin(
             ))
         
         return CommonResponse(code=200, message=f"Found {len(order_responses)} orders", message_id="ADMIN_ORDERS",
-            data=AdminOrdersResponse(orders=order_responses, total_count=total_count, has_more=(offset + limit) < total_count))
+            data=AdminOrdersResponse(
+                orders=order_responses,
+                total_count=total_count,
+                total_orders_completed=total_orders_completed,
+                page=page,
+                page_size=limit,
+                total_pages=total_pages,
+                has_more=(offset + limit) < total_count
+            )
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -1797,3 +1836,94 @@ async def admin_intervene_order(
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process intervention: {str(e)}")
+@router.get("/admin/{order_id}", response_model=CommonResponse[AdminOrderResponse])
+async def get_order_by_id_admin(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get complete order details by ID for admin."""
+    try:
+        # 1. Admin Authorization Check
+        if current_user.role != UserRole.ADMIN:
+            raise HTTPException(status_code=403, detail="Only admins can access this endpoint")
+
+        # 2. Fetch the Order
+        order = db.query(Order).filter(Order.order_id == order_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        # 3. Fetch all related details
+        customer = db.query(User).filter(User.user_id == order.customer_id).first()
+        restaurant = db.query(Restaurant).filter(Restaurant.restaurant_id == order.restaurant_id).first()
+        address = db.query(Address).filter(Address.address_id == order.delivery_address_id).first()
+        
+        # 4. Fetch Items & Tracking (Crucial for Admin)
+        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+        tracking = db.query(OrderTracking).filter(OrderTracking.order_id == order_id).order_by(OrderTracking.created_at.desc()).all()
+        
+                # 5. Build Item Responses (Fetching FoodItem details)
+        item_responses = []
+        for item in items:
+            food_item = db.query(FoodItem).filter(FoodItem.food_item_id == item.food_item_id).first()
+            item_responses.append(OrderItemResponse(
+                order_item_id=item.order_item_id,
+                food_item_id=item.food_item_id,
+                food_item_name=food_item.name if food_item else "Unknown",
+                food_item_image=food_item.image if food_item else None,
+                variant_id=item.variant_id,
+                variant_name=None, 
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                total_price=item.total_price,
+                special_instructions=item.special_instructions,
+                is_veg=food_item.is_veg if food_item else True
+            ))
+
+        # 6. Build Response Data Object
+        order_data = AdminOrderResponse(
+            order_id=order.order_id,
+            order_number=order.order_number,
+            customer_id=order.customer_id,
+            restaurant_id=order.restaurant_id,
+            delivery_partner_id=order.delivery_partner_id,
+            delivery_address_id=order.delivery_address_id, 
+            restaurant=RestaurantBasicResponse(
+                restaurant_id=restaurant.restaurant_id, name=restaurant.name,
+                phone=restaurant.phone, image=restaurant.image, address_line1=restaurant.address_line1, city=restaurant.city
+            ) if restaurant else None,
+            delivery_address=AddressResponse(
+                address_id=address.address_id, title=address.title,
+                address_line1=address.address_line1, address_line2=address.address_line2,
+                city=address.city, state=address.state, postal_code=address.postal_code,
+                latitude=address.latitude, longitude=address.longitude
+            ) if address else None,
+            subtotal=order.subtotal, tax_amount=order.tax_amount, delivery_fee=order.delivery_fee,
+            discount_amount=order.discount_amount, total_amount=order.total_amount,
+            payment_method=order.payment_method, payment_status=order.payment_status, payment_id=order.payment_id,
+            order_status=order.order_status, estimated_delivery_time=order.estimated_delivery_time,
+            actual_delivery_time=order.actual_delivery_time, special_instructions=order.special_instructions,
+            cancellation_reason=order.cancellation_reason, rating=order.rating, review=order.review,
+            created_at=order.created_at, updated_at=order.updated_at,
+            items=item_responses,
+            tracking=[OrderTrackingResponse(
+                order_tracking_id=t.order_tracking_id, status=t.status, 
+                latitude=t.latitude, longitude=t.longitude, 
+                notes=t.notes, created_at=t.created_at
+            ) for t in tracking],
+            delivery_partner=None,
+            customer_name=f"{customer.first_name} {customer.last_name}" if customer else "Unknown",
+            customer_email=customer.email if customer else "",
+            customer_phone=customer.phone if customer else ""
+        )
+        return CommonResponse(
+            code=200, 
+            message="Order details retrieved successfully", 
+            message_id="ADMIN_ORDER_DETAIL", 
+            data=order_data
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve order details: {str(e)}")
