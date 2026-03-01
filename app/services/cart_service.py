@@ -32,9 +32,42 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+import json
+import decimal
+
 class CartService:
     """Service class for cart operations"""
     
+    @staticmethod
+    def extract_customizations_price(special_instructions: Optional[str]) -> Decimal:
+        """Parse special_instructions JSON and calculate total cost of customizations and addons"""
+        price_addition = Decimal('0.00')
+        if not special_instructions:
+            return price_addition
+            
+        try:
+            customizations = json.loads(special_instructions)
+            
+            # Add size price if available
+            if 'sizePrice' in customizations:
+                try:
+                    price_addition += Decimal(str(customizations['sizePrice']))
+                except (ValueError, TypeError, decimal.InvalidOperation):
+                    logger.warning(f"Invalid sizePrice: {customizations.get('sizePrice')}")
+            
+            # Add addon prices
+            if 'selectedAddOns' in customizations and isinstance(customizations['selectedAddOns'], list):
+                for addon in customizations['selectedAddOns']:
+                    if isinstance(addon, dict) and 'price' in addon:
+                        try:
+                            price_addition += Decimal(str(addon['price']))
+                        except (ValueError, TypeError, decimal.InvalidOperation):
+                            logger.warning(f"Invalid addon price in special_instructions: {addon.get('price')}")
+        except json.JSONDecodeError:
+            logger.warning(f"special_instructions is not valid JSON: {special_instructions}")
+            
+        return price_addition
+
     @staticmethod
     def get_or_create_cart(db: Session, user_id: UUID, restaurant_id: UUID) -> Cart:
         """
@@ -126,7 +159,9 @@ class CartService:
             variant_price = variant.price_adjustment
         
         # Calculate unit price
-        unit_price = food_item.price + variant_price
+        base_price = food_item.price + variant_price
+        customization_price = CartService.extract_customizations_price(request.special_instructions)
+        unit_price = base_price + customization_price
         total_price = unit_price * request.quantity
         
         # Check if item already exists in cart

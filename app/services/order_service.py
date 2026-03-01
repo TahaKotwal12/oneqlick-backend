@@ -31,6 +31,7 @@ from app.utils.order_utils import (
     calculate_delivery_partner_earnings
 )
 from app.services.pricing_service import PricingService
+from app.services.cart_service import CartService
 from app.utils.enums import OrderStatus, PaymentStatus, CouponType, FoodStatus
 from fastapi import HTTPException, status
 
@@ -132,7 +133,9 @@ class OrderService:
                 )
             
             # Use discount price if available, otherwise regular price
-            item_price = food_item.discount_price if food_item.discount_price else food_item.price
+            base_price = food_item.discount_price if food_item.discount_price else food_item.price
+            customization_price = CartService.extract_customizations_price(cart_item.special_instructions)
+            item_price = base_price + customization_price
             item_total = item_price * cart_item.quantity
             subtotal += item_total
             
