@@ -164,12 +164,13 @@ class CartService:
         unit_price = base_price + customization_price
         total_price = unit_price * request.quantity
         
-        # Check if item already exists in cart
+        # Check if item already exists in cart with EXACT same customizations
         existing_item = db.query(CartItem).filter(
             and_(
                 CartItem.cart_id == cart_id,
                 CartItem.food_item_id == request.food_item_id,
-                CartItem.variant_id == request.variant_id
+                CartItem.variant_id == request.variant_id,
+                CartItem.special_instructions == request.special_instructions
             )
         ).first()
         
