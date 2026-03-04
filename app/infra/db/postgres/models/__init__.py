@@ -33,6 +33,7 @@ from .user_wallet import UserWallet
 from .pricing_config import PricingConfig
 from .review_form import ReviewForm
 from .review_response import ReviewResponse
+from .user_favorite import UserFavorite
 
 __all__ = [
     # Core models
@@ -70,5 +71,6 @@ __all__ = [
     'UserWallet',
     'PricingConfig',
     'ReviewForm',
-    'ReviewResponse'
+    'ReviewResponse',
+    'UserFavorite',
 ]

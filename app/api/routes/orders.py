@@ -387,6 +387,106 @@ async def get_my_orders(
         )
 
 
+@router.get("/{order_id}/invoice", response_model=CommonResponse[dict])
+async def get_order_invoice(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get structured invoice data for a completed order.
+    Returns a full bill breakdown suitable for display in the app or PDF generation.
+    """
+    try:
+        order = db.query(Order).filter(
+            Order.order_id == order_id,
+            Order.customer_id == current_user.user_id,
+        ).first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+
+        # Fetch supporting data
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.restaurant_id == order.restaurant_id
+        ).first()
+
+        order_items = db.query(OrderItem).filter(
+            OrderItem.order_id == order_id
+        ).all()
+
+        # Build itemized list
+        items_detail = []
+        for item in order_items:
+            food_item = db.query(FoodItem).filter(
+                FoodItem.food_item_id == item.food_item_id
+            ).first()
+            items_detail.append({
+                "name": food_item.name if food_item else "Unknown Item",
+                "quantity": item.quantity,
+                "unit_price": float(item.unit_price),
+                "total_price": float(item.total_price),
+                "is_veg": food_item.is_veg if food_item else True,
+                "special_instructions": item.special_instructions,
+            })
+
+        # Payment info
+        from app.infra.db.postgres.models.payment import Payment
+        payment = db.query(Payment).filter(
+            Payment.order_id == order_id
+        ).first()
+
+        invoice = {
+            "invoice_number": f"INV-{order.order_number}",
+            "order_id": str(order.order_id),
+            "order_number": order.order_number,
+            "order_date": order.created_at.isoformat() if order.created_at else None,
+            "restaurant": {
+                "name": restaurant.name if restaurant else "Unknown",
+                "address": f"{restaurant.address_line1}, {restaurant.city}" if restaurant else "",
+                "phone": restaurant.phone if restaurant else "",
+                "gstin": restaurant.gst_number if restaurant else None,
+                "fssai": restaurant.fssai_license_number if restaurant else None,
+            },
+            "items": items_detail,
+            "pricing": {
+                "subtotal": float(order.subtotal),
+                "tax_amount": float(order.tax_amount),
+                "tax_rate_percent": 5.0,  # 5% GST on food delivery
+                "delivery_fee": float(order.delivery_fee),
+                "platform_fee": float(order.total_amount - order.subtotal - order.tax_amount - order.delivery_fee + order.discount_amount),
+                "discount_amount": float(order.discount_amount),
+                "total_amount": float(order.total_amount),
+            },
+            "payment": {
+                "method": order.payment_method,
+                "status": order.payment_status,
+                "razorpay_payment_id": payment.razorpay_payment_id if payment else None,
+                "refund_status": payment.refund_status if payment else None,
+                "refund_amount": float(payment.refund_amount) if payment and payment.refund_amount else None,
+            },
+        }
+
+        return CommonResponse(
+            code=200,
+            message="Invoice retrieved successfully",
+            message_id="INVOICE_RETRIEVED",
+            data=invoice,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating invoice: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate invoice: {str(e)}",
+        )
+
+
 @router.get("/{order_id}", response_model=CommonResponse[OrderDetailResponse])
 async def get_order_details(
     order_id: UUID,
@@ -586,6 +686,48 @@ async def cancel_order(
             Address.address_id == order.delivery_address_id
         ).first()
         
+        # ── Auto-trigger refund if payment was made ─────────────────────────
+        try:
+            from app.infra.db.postgres.models.payment import Payment
+            from app.services.razorpay_service import razorpay_service
+            from app.infra.db.postgres.models.notification import Notification
+
+            payment = db.query(Payment).filter(
+                Payment.order_id == order.order_id,
+                Payment.payment_status == PaymentStatus.PAID,
+            ).first()
+
+            if payment and payment.razorpay_payment_id and not payment.is_refunded:
+                refund = razorpay_service.initiate_refund(
+                    payment_id=payment.razorpay_payment_id,
+                    amount=float(order.total_amount),
+                    notes={"reason": request.cancellation_reason or "Order cancelled by customer"},
+                )
+                payment.is_refunded = True
+                payment.refund_id = refund.get("id")
+                payment.refund_amount = order.total_amount
+                payment.refund_status = "processing"
+
+                # Notify user that refund is being processed
+                notification = Notification(
+                    user_id=order.customer_id,
+                    title="Refund Initiated 💳",
+                    body=(
+                        f"Your order #{order.order_number} has been cancelled. "
+                        f"A refund of ₹{float(order.total_amount):.2f} is being processed "
+                        f"and will be credited within 5-7 business days."
+                    ),
+                    notification_type="order_update",
+                    order_id=order.order_id,
+                    is_read=False,
+                )
+                db.add(notification)
+                db.commit()
+                logger.info(f"Auto-refund triggered for order {order.order_number}: {refund.get('id')}")
+        except Exception as refund_err:
+            # Refund failure should NOT block the cancellation response
+            logger.error(f"Auto-refund failed for order {order.order_id}: {refund_err}")
+
         # Build response (similar to create_order)
         order_response = OrderResponse(
             order_id=order.order_id,
@@ -648,6 +790,144 @@ async def cancel_order(
             detail=f"Failed to cancel order: {str(e)}"
         )
 
+
+@router.post("/{order_id}/reorder", response_model=CommonResponse[dict])
+async def reorder_from_history(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Reorder from a previous order.
+
+    This endpoint:
+    1. Fetches the original order and its items
+    2. Validates the restaurant is still active and open
+    3. Checks each food item is still available
+    4. Clears the user's existing cart for the same restaurant
+       (or all items if from a different restaurant)
+    5. Adds all available items to the cart
+    6. Returns the cart summary + list of unavailable items skipped
+    """
+    try:
+        from app.infra.db.postgres.models.cart import Cart
+        from app.infra.db.postgres.models.cart_item import CartItem
+
+        # ── Fetch original order ─────────────────────────────────────────────
+        order = db.query(Order).filter(
+            Order.order_id == order_id,
+            Order.customer_id == current_user.user_id,
+        ).first()
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+
+        # ── Validate restaurant ───────────────────────────────────────────────
+        restaurant = db.query(Restaurant).filter(
+            Restaurant.restaurant_id == order.restaurant_id
+        ).first()
+
+        if not restaurant or restaurant.status != 'active':
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Restaurant is no longer available",
+            )
+
+        # ── Fetch order items ─────────────────────────────────────────────────
+        order_items = db.query(OrderItem).filter(
+            OrderItem.order_id == order_id
+        ).all()
+
+        if not order_items:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Original order has no items",
+            )
+
+        # ── Clear or get existing cart ────────────────────────────────────────
+        existing_cart = db.query(Cart).filter(
+            Cart.user_id == current_user.user_id,
+        ).first()
+
+        if existing_cart:
+            # Clear the cart items
+            db.query(CartItem).filter(
+                CartItem.cart_id == existing_cart.cart_id
+            ).delete(synchronize_session=False)
+            existing_cart.restaurant_id = order.restaurant_id
+            existing_cart.updated_at = datetime.now(timezone.utc)
+            cart = existing_cart
+        else:
+            import uuid as _uuid
+            cart = Cart(
+                user_id=current_user.user_id,
+                restaurant_id=order.restaurant_id,
+            )
+            db.add(cart)
+            db.flush()  # get cart_id
+
+        # ── Add available items ───────────────────────────────────────────────
+        added_items = []
+        unavailable_items = []
+
+        for order_item in order_items:
+            food_item = db.query(FoodItem).filter(
+                FoodItem.food_item_id == order_item.food_item_id
+            ).first()
+
+            if not food_item or not food_item.is_available:
+                unavailable_items.append({
+                    "food_item_id": str(order_item.food_item_id),
+                    "name": food_item.name if food_item else "Unknown",
+                    "reason": "Item no longer available",
+                })
+                continue
+
+            cart_item = CartItem(
+                cart_id=cart.cart_id,
+                food_item_id=order_item.food_item_id,
+                variant_id=order_item.variant_id,
+                quantity=order_item.quantity,
+                unit_price=food_item.price,
+                total_price=food_item.price * order_item.quantity,
+                special_instructions=order_item.special_instructions,
+            )
+            db.add(cart_item)
+            added_items.append(food_item.name)
+
+        db.commit()
+
+        logger.info(
+            f"Reorder for user {current_user.user_id}: "
+            f"{len(added_items)} items added, {len(unavailable_items)} skipped"
+        )
+
+        return CommonResponse(
+            code=200,
+            message="Cart ready for reorder",
+            message_id="REORDER_SUCCESS",
+            data={
+                "cart_id": str(cart.cart_id),
+                "restaurant_id": str(order.restaurant_id),
+                "restaurant_name": restaurant.name,
+                "items_added": len(added_items),
+                "items_added_names": added_items,
+                "unavailable_items": unavailable_items,
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error reordering: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reorder: {str(e)}",
+        )
 
 @router.post("/{order_id}/rate", response_model=CommonResponse[dict])
 async def rate_order(

@@ -351,6 +351,51 @@ async def razorpay_webhook(
                 db.commit()
                 logger.info(f"Refund created via webhook: {refund_id}")
         
+        elif event == "refund.processed":
+            # Refund successfully credited to customer bank account
+            refund_data = webhook_data.get("payload", {}).get("refund", {}).get("entity", {})
+            payment_id = refund_data.get("payment_id")
+            refund_id = refund_data.get("id")
+            
+            payment = db.query(Payment).filter(
+                Payment.razorpay_payment_id == payment_id
+            ).first()
+            
+            if payment:
+                payment.refund_status = "completed"
+                db.commit()
+
+                # Notify the user their refund was credited
+                try:
+                    from app.infra.db.postgres.models.notification import Notification
+                    from app.utils.enums import NotificationType
+
+                    order = db.query(Order).filter(
+                        Order.order_id == payment.order_id
+                    ).first()
+
+                    if order:
+                        refund_amount_display = (
+                            float(payment.refund_amount)
+                            if payment.refund_amount
+                            else float(refund_data.get("amount", 0) / 100)
+                        )
+                        notification = Notification(
+                            user_id=order.customer_id,
+                            title="Refund Credited ✅",
+                            body=f"Your refund of ₹{refund_amount_display:.2f} for order #{order.order_number} has been credited to your account.",
+                            notification_type="order_update",
+                            order_id=order.order_id,
+                            is_read=False,
+                        )
+                        db.add(notification)
+                        db.commit()
+                        logger.info(f"Refund completion notification sent for order {order.order_number}")
+                except Exception as notify_err:
+                    logger.warning(f"Could not send refund notification: {notify_err}")
+
+                logger.info(f"Refund processed via webhook: {refund_id}")
+        
         return {"status": "success", "message": "Webhook processed"}
         
     except HTTPException:

@@ -10,7 +10,7 @@ class FoodVariant(Base):
     __tablename__ = 'core_mstr_one_qlick_food_variants_tbl'
 
     food_variant_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    food_item_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_food_items_tbl(food_item_id)', ondelete='CASCADE'))
+    food_item_id = Column(UUID(as_uuid=True), ForeignKey('core_mstr_one_qlick_food_items_tbl.food_item_id', ondelete='CASCADE'))
     name = Column(String(100), nullable=False)  # Small, Medium, Large
     price_adjustment = Column(DECIMAL(10, 2), default=0)
     is_default = Column(Boolean, default=False)
