@@ -17,7 +17,7 @@ class Address(Base):
     address_line2 = Column(String(255))
     city = Column(String(100), nullable=False)
     state = Column(String(100), nullable=False)
-    postal_code = Column(String(20), nullable=False)
+    postal_code = Column(String(20), nullable=False, index=True)
     latitude = Column(DECIMAL(10, 8))
     longitude = Column(DECIMAL(11, 8))
     is_default = Column(Boolean, default=False)
