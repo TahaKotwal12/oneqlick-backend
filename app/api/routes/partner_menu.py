@@ -2,7 +2,8 @@
 Partner Menu Management API Routes
 Handles menu item CRUD operations for restaurant owners
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
+from app.services.menu_upload_service import MenuUploadService
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from typing import Optional
@@ -19,6 +20,9 @@ from app.api.schemas.partner_restaurant_schemas import (
     CategoryResponse, CategoryListResponse
 )
 from app.api.schemas.common_schemas import CommonResponse
+from app.api.schemas.onboarding_schemas import BulkMenuUploadResponse
+from app.api.schemas.common_schemas import CommonResponse
+from app.api.schemas.onboarding_schemas import BulkMenuUploadResponse
 from app.infra.db.postgres.models.user import User
 from app.infra.db.postgres.models.food_item import FoodItem
 from app.infra.db.postgres.models.restaurant import Restaurant
@@ -561,3 +565,39 @@ async def get_categories(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch categories: {str(e)}"
         )
+
+@router.post("/upload", response_model=CommonResponse[BulkMenuUploadResponse])
+async def bulk_upload_menu(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_restaurant_owner),
+    db: Session = Depends(get_db)
+):
+    """Upload menu via CSV or Excel (XLSX/XLS)"""
+    # Validate extension
+    ext = file.filename.split(".")[-1].lower()
+    if ext not in ["csv", "xlsx", "xls"]:
+        raise HTTPException(status_code=400, detail="Invalid file format.")
+
+    # Get restaurant
+    restaurant = db.query(Restaurant).filter(Restaurant.owner_id == current_user.user_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found.")
+
+    contents = await file.read()
+    result = MenuUploadService.process_upload(db, contents, ext, restaurant.restaurant_id)
+    
+    return CommonResponse(
+        code=200 if result['success'] else 400,
+        message=result['message'],
+        message_id="MENU_UPLOAD_SUCCESS" if result['success'] else "MENU_UPLOAD_FAILED",
+        data=BulkMenuUploadResponse(
+            success=result['success'],
+            message=result['message'],
+            total_rows=result['data']['total'] if result['success'] else 0,
+            success_count=result['data']['created'] if result['success'] else 0,
+            error_count=result['data']['errors'] if result['success'] else 1,
+            errors=[], 
+            menu_uploaded=result['success']
+        )
+    )
+
