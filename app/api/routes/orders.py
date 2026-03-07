@@ -4,6 +4,7 @@ Handles all order-related operations for customers, restaurants, delivery partne
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 from typing import Optional, List, Literal
@@ -11,6 +12,8 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from uuid import UUID
 import math
+import csv  # Add this
+import io 
 
 from app.infra.db.postgres.postgres_config import get_db
 from app.api.dependencies import get_current_user, get_optional_current_user
@@ -1930,17 +1933,59 @@ async def get_delivery_earnings(
 # ============================================
 # ADMIN APIS
 # ============================================
+def _apply_admin_order_filters(
+    db: Session,
+    status_filter: Optional[str] = None,
+    restaurant_id: Optional[UUID] = None,
+    customer_id: Optional[UUID] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
+    location: Optional[str] = None,
+    postal_code: Optional[str] = None
+):
+    """Shared filtering logic for admin order list and export."""
+    # 1. Price Validation
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(status_code=400, detail="min_price cannot be greater than max_price")
+
+    query = db.query(Order)
+    
+    # 2. Add Address JOIN and filter
+    if location or postal_code:
+        query = query.join(Address, Order.delivery_address_id == Address.address_id)
+        if location:
+            query = query.filter(or_(Address.city.ilike(f"%{location}%"), Address.state.ilike(f"%{location}%")))
+        if postal_code:
+            query = query.filter(Address.postal_code == postal_code)
+
+    # 3. Apply the rest of the filters
+    if min_price is not None: query = query.filter(Order.total_amount >= min_price)
+    if max_price is not None: query = query.filter(Order.total_amount <= max_price)
+    
+    if status_filter and status_filter.lower() != 'all':
+        query = query.filter(Order.order_status == status_filter.lower())
+    
+    if restaurant_id: query = query.filter(Order.restaurant_id == restaurant_id)
+    if customer_id: query = query.filter(Order.customer_id == customer_id)
+    if from_date: query = query.filter(Order.created_at >= from_date)
+    if to_date: query = query.filter(Order.created_at <= to_date)
+        
+    return query
+
 
 @router.get("/admin/orders", response_model=CommonResponse[AdminOrdersResponse])
 async def get_all_orders_admin(
-    status_filter: Optional[Literal[OrderStatus.PENDING, OrderStatus.CONFIRMED]] = Query(None),
+    status_filter: Optional[str] = Query(None),
     restaurant_id: Optional[UUID] = Query(None),
     customer_id: Optional[UUID] = Query(None),
-    from_date: Optional[datetime] = Query(None),
-    to_date: Optional[datetime] = Query(None),
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
     min_price: Optional[Decimal] = Query(None),
     max_price: Optional[Decimal] = Query(None),
     location: Optional[str] = Query(None),
+    postal_code: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -1951,34 +1996,23 @@ async def get_all_orders_admin(
         if current_user.role != UserRole.ADMIN:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can access all orders")
         
-        query = db.query(Order)
+                # 1. This call handles all JOINs and Filters
+        query = _apply_admin_order_filters(
+            db=db,
+            status_filter=status_filter,
+            restaurant_id=restaurant_id,
+            customer_id=customer_id,
+            from_date=from_date,
+            to_date=to_date,
+            min_price=min_price,
+            max_price=max_price,
+            location=location,
+            postal_code=postal_code
+        )
         
-        # Location Filter (matching City or State)
-        if location:
-            query = query.join(Address, Order.delivery_address_id == Address.address_id)
-            query = query.filter(or_(
-                Address.city.ilike(f"%{location}%"),
-                Address.state.ilike(f"%{location}%")
-            ))
 
-        # Price Filters
-        if min_price:
-            query = query.filter(Order.total_amount >= min_price)
-        if max_price:
-            query = query.filter(Order.total_amount <= max_price)
-        if status_filter:
-            query = query.filter(Order.order_status == status_filter)
-        if restaurant_id:
-            query = query.filter(Order.restaurant_id == restaurant_id)
-        if customer_id:
-            query = query.filter(Order.customer_id == customer_id)
-        if from_date:
-            query = query.filter(Order.created_at >= from_date)
-        if to_date:
-            query = query.filter(Order.created_at <= to_date)
-        
-                # Total items for current query
         total_count = query.count()
+
         
         # Calculate Total Pages
         total_pages = math.ceil(total_count / limit) if limit > 0 else 0
@@ -2116,6 +2150,94 @@ async def admin_intervene_order(
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process intervention: {str(e)}")
+
+@router.get("/admin/export", response_class=StreamingResponse)
+async def export_orders_csv(
+    status_filter: Optional[str] = Query(None),
+    restaurant_id: Optional[UUID] = Query(None),
+    customer_id: Optional[UUID] = Query(None),
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    min_price: Optional[Decimal] = Query(None),
+    max_price: Optional[Decimal] = Query(None),
+    location: Optional[str] = Query(None),
+    postal_code: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Only admins can access this feature")
+
+    # Apply filters
+    query = _apply_admin_order_filters(
+        db=db,
+        status_filter=status_filter,
+        restaurant_id=restaurant_id,
+        customer_id=customer_id,
+        from_date=from_date,
+        to_date=to_date,
+        min_price=min_price,
+        max_price=max_price,
+        location=location,
+        postal_code=postal_code
+    )
+
+    # Fetch orders
+        # Fetch orders (simple version)
+    orders = query.order_by(desc(Order.created_at)).all()
+
+    def generate_csv():
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Header
+        writer.writerow([
+            "Order Number",
+            "Customer Name",
+            "Restaurant Name",
+            "Total Amount",
+            "Order Status",
+            "Created At",
+            "Pincode"
+        ])
+
+        
+
+        for order in orders:
+            # Manual queries to get related data safely
+            customer = db.query(User).filter(User.user_id == order.customer_id).first()
+            restaurant = db.query(Restaurant).filter(Restaurant.restaurant_id == order.restaurant_id).first()
+            address = db.query(Address).filter(Address.address_id == order.delivery_address_id).first()
+
+            writer.writerow([
+                order.order_number,
+                f"{customer.first_name} {customer.last_name}" if customer else "Unknown",
+                restaurant.name if restaurant else "Unknown",
+                f"{float(order.total_amount):.2f}",
+                # Safe status extraction
+                order.order_status.value if hasattr(order.order_status, "value") else order.order_status,
+                order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "N/A",
+                address.postal_code if address else "N/A"
+            ])
+
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+    filename = f"orders_{postal_code}.csv" if postal_code else "orders_all.csv"
+
+    return StreamingResponse(
+        generate_csv(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
 @router.get("/admin/{order_id}", response_model=CommonResponse[AdminOrderResponse])
 async def get_order_by_id_admin(
     order_id: UUID,
@@ -2203,7 +2325,7 @@ async def get_order_by_id_admin(
             data=order_data
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve order details: {str(e)}")
+
+
