@@ -427,13 +427,41 @@ async def get_order_invoice(
             food_item = db.query(FoodItem).filter(
                 FoodItem.food_item_id == item.food_item_id
             ).first()
+            # Parse customization notes cleanly
+            special_note = None
+            if item.special_instructions:
+                try:
+                    import json as _json
+                    parsed = _json.loads(item.special_instructions) if isinstance(item.special_instructions, str) else item.special_instructions
+                    if isinstance(parsed, dict):
+                        # Build a human-readable string: "Size: Large, Extra Cheese"
+                        parts = []
+                        for k, v in parsed.items():
+                            if k.lower() in ('note',):  # skip raw note wrapper
+                                if isinstance(v, dict):
+                                    for ik, iv in v.items():
+                                        if isinstance(iv, bool) and iv:
+                                            parts.append(str(ik))
+                                        elif not isinstance(iv, bool):
+                                            parts.append(f"{ik}: {iv}")
+                                else:
+                                    parts.append(str(v))
+                            elif isinstance(v, bool) and v:
+                                parts.append(str(k))
+                            elif not isinstance(v, bool):
+                                parts.append(f"{k}: {v}")
+                        special_note = ", ".join(parts) if parts else None
+                    else:
+                        special_note = str(parsed) if parsed else None
+                except Exception:
+                    special_note = str(item.special_instructions)
             items_detail.append({
                 "name": food_item.name if food_item else "Unknown Item",
                 "quantity": item.quantity,
                 "unit_price": float(item.unit_price),
                 "total_price": float(item.total_price),
                 "is_veg": food_item.is_veg if food_item else True,
-                "special_instructions": item.special_instructions,
+                "special_instructions": special_note,
             })
 
         # Payment info
@@ -889,13 +917,15 @@ async def reorder_from_history(
                 })
                 continue
 
+            # Use the ORIGINAL unit_price from the order item so we preserve
+            # variant/customization pricing (e.g. Large +50, Extra Cheese +25)
             cart_item = CartItem(
                 cart_id=cart.cart_id,
                 food_item_id=order_item.food_item_id,
                 variant_id=order_item.variant_id,
                 quantity=order_item.quantity,
-                unit_price=food_item.price,
-                total_price=food_item.price * order_item.quantity,
+                unit_price=order_item.unit_price,                # Keep original price
+                total_price=order_item.unit_price * order_item.quantity,
                 special_instructions=order_item.special_instructions,
             )
             db.add(cart_item)
