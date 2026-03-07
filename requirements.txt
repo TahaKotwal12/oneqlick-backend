@@ -33,3 +33,6 @@ razorpay==1.4.1
 
 # SMS
 twilio==9.3.7
+
+pandas==2.2.2
+openpyxl==3.1.2
