@@ -52,14 +52,38 @@ async def login(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email/phone or password"
             )
-        
+
+        # ── Account lockout check ─────────────────────────────────────────────
+        now = datetime.now(timezone.utc)
+        if user.locked_until and user.locked_until > now:
+            remaining_seconds = int((user.locked_until - now).total_seconds())
+            remaining_minutes = (remaining_seconds // 60) + 1
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account locked due to multiple failed login attempts. Try again in {remaining_minutes} minute(s)."
+            )
+
         # Verify password
         if not AuthUtils.verify_password(request.password, user.password_hash):
+            # Increment failed attempts
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            MAX_ATTEMPTS = 5
+            LOCKOUT_MINUTES = 15
+            if user.failed_login_attempts >= MAX_ATTEMPTS:
+                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+                db.commit()
+                logger.warning(f"Account locked for user {user.email} after {MAX_ATTEMPTS} failed attempts")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account locked for {LOCKOUT_MINUTES} minutes due to too many failed login attempts."
+                )
+            db.commit()
+            attempts_left = MAX_ATTEMPTS - user.failed_login_attempts
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email/phone or password"
+                detail=f"Invalid email/phone or password. {attempts_left} attempt(s) remaining before lockout."
             )
-        
+
         # Check if user is active
         if user.status != UserStatus.ACTIVE.value:
             raise HTTPException(
@@ -75,6 +99,10 @@ async def login(
             )
         
         # Generate tokens
+        # Reset failed login counter on successful login
+        if user.failed_login_attempts or user.locked_until:
+            user.failed_login_attempts = 0
+            user.locked_until = None
         access_token = AuthUtils.generate_jwt_token(str(user.user_id), user.role)
         refresh_token_obj = AuthUtils.create_refresh_token(
             db, str(user.user_id), get_device_info(http_request),
@@ -193,6 +221,32 @@ async def signup(
                     # Delete expired pending user
                     PendingUserUtils.delete_pending_user(db, str(existing_pending_phone.pending_user_id))
         
+        # Validate password strength (enforce SECURITY_CONFIG rules)
+        from app.config.config import SECURITY_CONFIG
+        import re as _re
+        pw = request.password
+        min_len = SECURITY_CONFIG.get("password_min_length", 8)
+        if len(pw) < min_len:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Password must be at least {min_len} characters long."
+            )
+        if SECURITY_CONFIG.get("password_require_uppercase", True) and not _re.search(r'[A-Z]', pw):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one uppercase letter."
+            )
+        if SECURITY_CONFIG.get("password_require_numbers", True) and not _re.search(r'\d', pw):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one number."
+            )
+        if SECURITY_CONFIG.get("password_require_special_chars", True) and not _re.search(r'[@$!%*?&#^()_\-+=]', pw):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one special character (@$!%*?&#^()_-+=)."
+            )
+
         # Hash password
         hashed_password = AuthUtils.hash_password(request.password)
         

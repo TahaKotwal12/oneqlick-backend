@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer
+from sqlalchemy import Column, String, Boolean, TIMESTAMP, Enum, Date, Integer, DateTime
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -25,5 +25,7 @@ class User(Base):
     date_of_birth = Column(Date)
     gender = Column(Enum(Gender))
     loyalty_points = Column(Integer, default=0)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
