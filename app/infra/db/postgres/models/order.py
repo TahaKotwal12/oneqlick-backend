@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, TIMESTAMP, ForeignKey, DECIMAL, Enum, Integer, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import uuid
 from ..base import Base
 from app.utils.enums import OrderStatus, PaymentStatus, PaymentMethod
@@ -36,3 +37,16 @@ class Order(Base):
     review = Column(String)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships for efficient eager loading (used by joinedload in get_my_orders)
+    restaurant = relationship(
+        "Restaurant",
+        foreign_keys=[restaurant_id],
+        lazy="select",  # default lazy; joinedload overrides per-query
+    )
+    delivery_address = relationship(
+        "Address",
+        foreign_keys=[delivery_address_id],
+        lazy="select",
+    )
+

@@ -289,35 +289,49 @@ async def get_my_orders(
 ):
     """
     Get user's order history with pagination and filtering.
+    Uses joinedload to avoid N+1 queries — fetches all restaurants and addresses
+    in 3 queries total instead of (2×N + 1) queries.
     """
     try:
+        from sqlalchemy.orm import joinedload
+
         logger.info(f"Fetching orders for user {current_user.user_id}")
-        
-        # Build query
-        query = db.query(Order).filter(Order.customer_id == current_user.user_id)
-        
-        # Apply status filter
+
+        # Base query — filter by user first (cheap indexed lookup)
+        base_query = db.query(Order).filter(Order.customer_id == current_user.user_id)
+
         if status_filter:
-            query = query.filter(Order.order_status == status_filter)
-        
-        # Get total count
-        total_count = query.count()
-        
-        # Apply pagination and ordering
+            base_query = base_query.filter(Order.order_status == status_filter)
+
+        # Get total count (separate query, no joins needed for count)
+        total_count = base_query.count()
+
+        # Fetch orders with restaurant and address eagerly loaded in the same query
+        # joinedload tells SQLAlchemy to do LEFT OUTER JOINs instead of lazy per-row selects
         offset = (page - 1) * limit
-        orders = query.order_by(desc(Order.created_at)).offset(offset).limit(limit).all()
-        
-        # Build response
+        orders = (
+            base_query
+            .options(
+                joinedload(Order.restaurant),
+                joinedload(Order.delivery_address),
+            )
+            .order_by(desc(Order.created_at))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        # Build response — no extra DB queries needed, restaurant + address already loaded
         order_responses = []
         for order in orders:
-            restaurant = db.query(Restaurant).filter(
-                Restaurant.restaurant_id == order.restaurant_id
-            ).first()
-            
-            address = db.query(Address).filter(
-                Address.address_id == order.delivery_address_id
-            ).first()
-            
+            restaurant = order.restaurant
+            address = order.delivery_address
+
+            if not restaurant or not address:
+                # Fallback: skip orders with missing relations (shouldn't happen in production)
+                logger.warning(f"Order {order.order_id} missing restaurant or address — skipping")
+                continue
+
             restaurant_response = RestaurantBasicResponse(
                 restaurant_id=restaurant.restaurant_id,
                 name=restaurant.name,
@@ -326,7 +340,7 @@ async def get_my_orders(
                 address_line1=restaurant.address_line1,
                 city=restaurant.city
             )
-            
+
             address_response = AddressResponse(
                 address_id=address.address_id,
                 title=address.title,
@@ -338,7 +352,7 @@ async def get_my_orders(
                 latitude=address.latitude,
                 longitude=address.longitude
             )
-            
+
             order_response = OrderResponse(
                 order_id=order.order_id,
                 order_number=order.order_number,
@@ -366,11 +380,11 @@ async def get_my_orders(
                 created_at=order.created_at,
                 updated_at=order.updated_at
             )
-            
+
             order_responses.append(order_response)
-        
+
         has_more = (offset + limit) < total_count
-        
+
         return CommonResponse(
             code=200,
             message=f"Found {len(order_responses)} orders",
@@ -381,13 +395,14 @@ async def get_my_orders(
                 has_more=has_more
             )
         )
-        
+
     except Exception as e:
         logger.error(f"Error fetching orders: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch orders: {str(e)}"
         )
+
 
 
 @router.get("/{order_id}/invoice", response_model=CommonResponse[dict])
