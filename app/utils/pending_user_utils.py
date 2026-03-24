@@ -120,8 +120,8 @@ class PendingUserUtils:
             role=pending_user.role,
             status=UserStatus.ACTIVE.value,
             profile_image=pending_user.profile_image,
-            email_verified=True,  # Set as verified since they completed verification
-            phone_verified=False,  # Phone verification is separate
+            email_verified=False,      # Email is NOT verified via OTP anymore
+            phone_verified=True,       # Phone was verified via SMS OTP — this is the gate
             date_of_birth=pending_user.date_of_birth,
             gender=pending_user.gender,
             loyalty_points=0
@@ -248,8 +248,13 @@ class PendingUserUtils:
         return False
     
     @staticmethod
-    def check_otp_lockout_status(pending_user: PendingUser) -> Dict[str, Any]:
-        """Check if a pending user is currently locked out from OTP requests."""
+    def check_otp_lockout_status(pending_user: PendingUser, db: Optional[Session] = None) -> Dict[str, Any]:
+        """Check if a pending user is currently locked out from OTP requests.
+        
+        Args:
+            pending_user: The PendingUser instance to check.
+            db: Optional DB session — needed only when resetting expired lockouts.
+        """
         now = datetime.now(timezone.utc)
         
         # Check if user is currently locked out
@@ -263,12 +268,12 @@ class PendingUserUtils:
                 "max_attempts": pending_user.max_otp_attempts
             }
         
-        # Check if user has exceeded attempts but lockout has expired
+        # Lockout has expired — reset attempt counter if db session is available
         if pending_user.otp_attempts >= pending_user.max_otp_attempts:
-            # Reset attempts if lockout has expired
             pending_user.otp_attempts = 0
             pending_user.otp_locked_until = None
-            db.commit()
+            if db is not None:
+                db.commit()
         
         return {
             "is_locked": False,

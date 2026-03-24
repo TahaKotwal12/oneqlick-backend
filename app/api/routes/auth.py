@@ -91,11 +91,11 @@ async def login(
                 detail="Account is not active"
             )
         
-        # Check if email is verified (required for login)
-        if not user.email_verified:
+        # Check if phone is verified (required for login)
+        if not user.phone_verified:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Please verify your email address before logging in. Check your email for verification instructions."
+                detail="Please verify your phone number before logging in. A verification SMS was sent to your phone during registration."
             )
         
         # Generate tokens
@@ -130,7 +130,7 @@ async def login(
                     "expires_in": JWT_EXPIRATION_HOURS * 3600
                 },
                 is_new_user=False,
-                requires_verification=not user.email_verified
+                requires_verification=not user.phone_verified
             )
         )
     
@@ -149,7 +149,7 @@ async def signup(
     request: SignupRequest,
     db: Session = Depends(get_db)
 ):
-    """User registration - creates pending user until email verification"""
+    """User registration - creates pending user until phone (SMS) verification"""
     try:
         from app.utils.pending_user_utils import PendingUserUtils
         
@@ -288,18 +288,18 @@ async def signup(
         
         logger.info(f"Pending user determined: {pending_user.pending_user_id} for email: {request.email}")
         
-        # Send OTP for email verification
+        # Send OTP via SMS for phone verification
         from app.utils.otp_utils import OTPUtils
-        from app.services.email_service import email_service
+        from app.services.sms_service import sms_service
         
-        logger.info(f"Creating OTP for pending user {pending_user.pending_user_id}, email: {request.email}")
+        logger.info(f"Creating OTP for pending user {pending_user.pending_user_id}, phone: {request.phone}")
         
         otp_record = OTPUtils.create_otp_record(
             db=db,
             user_id=str(pending_user.pending_user_id),  # Use pending user ID
-            email=request.email,
-            otp_type="email_verification",
-            is_pending_user=True  # Mark as pending user
+            phone=request.phone,          # Send to phone, not email
+            otp_type="phone_verification", # OTP type is now phone_verification
+            is_pending_user=True           # Mark as pending user
         )
         
         if not otp_record:
@@ -313,18 +313,17 @@ async def signup(
         
         logger.info(f"OTP record created successfully: {otp_record.otp_code}")
         
-        # Send OTP email
+        # Send OTP SMS
         try:
-            logger.info(f"Attempting to send OTP email to {request.email}")
-            email_sent = await email_service.send_otp_email(
-                to_email=request.email,
+            logger.info(f"Attempting to send OTP SMS to {request.phone}")
+            sms_sent = await sms_service.send_otp_sms(
+                to_phone=request.phone,
                 otp_code=otp_record.otp_code,
-                user_name=f"{pending_user.first_name} {pending_user.last_name}".strip(),
-                otp_type="email_verification"
+                user_name=f"{pending_user.first_name} {pending_user.last_name}".strip()
             )
             
-            if email_sent:
-                logger.info(f"OTP sent successfully to {request.email} for email verification")
+            if sms_sent:
+                logger.info(f"OTP SMS sent successfully to {request.phone} for phone verification")
                 # Count the signup OTP as the first attempt for lockout logic
                 try:
                     from app.utils.pending_user_utils import PendingUserUtils as _PU
@@ -337,29 +336,31 @@ async def signup(
                         f"Failed to initialize OTP attempts for pending user {pending_user.pending_user_id}: {incr_err}"
                     )
             else:
-                logger.error(f"Email service returned False for {request.email}")
-                # Clean up pending user if email sending fails
+                logger.error(f"SMS service returned False for {request.phone}")
+                # Clean up pending user if SMS sending fails
                 PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to send verification email. Please try again."
+                    detail="Failed to send verification SMS. Please try again."
                 )
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Failed to send OTP email to {request.email}: {e}")
-            # Clean up pending user if email sending fails
+            logger.error(f"Failed to send OTP SMS to {request.phone}: {e}")
+            # Clean up pending user if SMS sending fails
             PendingUserUtils.delete_pending_user(db, str(pending_user.pending_user_id))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to send verification email. Please try again."
+                detail="Failed to send verification SMS. Please try again."
             )
         
         return CommonResponse(
             code=201,
-            message="Registration initiated successfully. Please check your email for verification to complete your account setup.",
+            message="Registration initiated. Please check your phone for the 6-digit verification code to complete your account setup.",
             message_id="SIGNUP_SUCCESS",
             data=SignupResponse(
                 user=pending_user,  # Return the pending user directly
-                tokens=None,  # No tokens for signup - user must verify email first
+                tokens=None,  # No tokens for signup - user must verify phone first
                 requires_verification=True
             )
         )
@@ -466,7 +467,7 @@ async def google_signin(
                     "expires_in": JWT_EXPIRATION_HOURS * 3600
                 },
                 is_new_user=is_new_user,
-                requires_verification=not user.email_verified
+                requires_verification=not user.phone_verified
             )
         )
     
@@ -1077,29 +1078,43 @@ async def send_otp(request: SendOTPRequest, db: Session = Depends(get_db)):
         logger.info(f"OTP record created successfully: {otp_record.otp_code}")
         
         # Send OTP based on type
-        if request.email and request.otp_type in ["email_verification", "password_reset"]:
-            logger.info(f"Attempting to send OTP email to {request.email}")
+        if request.phone and request.otp_type == "phone_verification":
+            # Send SMS OTP via Twilio
+            from app.services.sms_service import sms_service
+            logger.info(f"Attempting to send OTP SMS to {request.phone}")
+            sms_sent = await sms_service.send_otp_sms(
+                to_phone=request.phone,
+                otp_code=otp_record.otp_code,
+                user_name=user_name,
+            )
+            
+            if sms_sent:
+                logger.info(f"OTP SMS sent successfully to {request.phone}")
+            else:
+                logger.error(f"SMS service returned False for {request.phone}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send OTP SMS"
+                )
+        
+        elif request.email and request.otp_type == "password_reset":
+            # Password reset stays email-based
+            logger.info(f"Attempting to send password reset OTP email to {request.email}")
             email_sent = await email_service.send_otp_email(
                 to_email=request.email,
                 otp_code=otp_record.otp_code,
-                user_name=user_name,  # Use the determined user name
+                user_name=user_name,
                 otp_type=request.otp_type
             )
             
             if email_sent:
-                logger.info(f"OTP email sent successfully to {request.email}")
+                logger.info(f"Password reset OTP email sent successfully to {request.email}")
             else:
                 logger.error(f"Email service returned False for {request.email}")
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to send OTP email"
                 )
-        
-        elif request.phone and request.otp_type == "phone_verification":
-            # Log OTP for development/testing purposes
-            # In production, integrate with SMS service like Twilio or MSG91
-            logger.info(f"Phone OTP: {otp_record.otp_code} for {request.phone}")
-            # TODO: Implement actual SMS sending service integration
         
         # Update OTP attempts and get lockout info
         if is_pending_user and pending_user:
@@ -1187,17 +1202,18 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         user_id = result["user_id"]
         is_pending_user = result.get("is_pending_user", False)
         
-        if request.otp_type == "email_verification":
+        if request.otp_type == "phone_verification":
             from app.utils.pending_user_utils import PendingUserUtils
             
-            # Check if this is a pending user (signup verification)
+            # Check if this is a pending user (signup verification via SMS OTP)
             if is_pending_user:
                 pending_user = db.query(PendingUser).filter(PendingUser.pending_user_id == user_id).first()
                 if pending_user:
                     # Reset OTP attempts on successful verification
                     PendingUserUtils.reset_otp_attempts(db, pending_user)
                     
-                    # Move pending user to main users table using verification token
+                    # Move pending user to main users table
+                    # verify_pending_user() now sets phone_verified=True, email_verified=False
                     user = PendingUserUtils.verify_pending_user(db, pending_user.verification_token)
                     if not user:
                         raise HTTPException(
@@ -1205,7 +1221,7 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
                             detail="Verification token expired or invalid"
                         )
                 
-                # Send welcome email after successful email verification
+                # Send welcome email after successful phone verification
                 try:
                     from app.services.email_service import email_service
                     await email_service.send_welcome_email(
@@ -1213,33 +1229,22 @@ async def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
                         user_name=f"{user.first_name} {user.last_name}".strip(),
                         first_name=user.first_name
                     )
-                    logger.info(f"Welcome email sent to {user.email} after email verification")
+                    logger.info(f"Welcome email sent to {user.email} after phone verification")
                 except Exception as e:
                     logger.warning(f"Failed to send welcome email to {user.email}: {e}")
             else:
-                # Regular user email verification
+                # Existing (already promoted) user re-verifying phone
                 user = AuthUtils.get_user_by_id(db, user_id)
                 if user:
-                    user.email_verified = True
+                    user.phone_verified = True
                     user.updated_at = datetime.now(timezone.utc)
                     db.commit()
-                    
-                    # Send welcome email after successful email verification
-                    try:
-                        from app.services.email_service import email_service
-                        await email_service.send_welcome_email(
-                            to_email=user.email,
-                            user_name=f"{user.first_name} {user.last_name}".strip(),
-                            first_name=user.first_name
-                        )
-                        logger.info(f"Welcome email sent to {user.email} after email verification")
-                    except Exception as e:
-                        logger.warning(f"Failed to send welcome email to {user.email}: {e}")
-        elif request.otp_type == "phone_verification":
-            # Regular user phone verification
+
+        elif request.otp_type == "email_verification":
+            # Legacy path: re-verify email for already-promoted users (edge case)
             user = AuthUtils.get_user_by_id(db, user_id)
             if user:
-                user.phone_verified = True
+                user.email_verified = True
                 user.updated_at = datetime.now(timezone.utc)
                 db.commit()
         
